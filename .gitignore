@@ -108,3 +108,5 @@ buildNumber.properties
 
 
 # End of https://www.gitignore.io/api/java,maven,intellij
+src/test/java/com/developer/drodriguez/.DS_Store
+music-maestro-evolved.iml
