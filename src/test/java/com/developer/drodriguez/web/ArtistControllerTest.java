@@ -39,10 +39,10 @@ public class ArtistControllerTest {
     @Autowired ArtistController artistController;
     @Autowired ArtistRepository artistRepository;
 
-    private static final Song SONG_ONE = new Song(UUID.randomUUID().toString(), "SongOne", "One", "2018", UUID.randomUUID().toString(), UUID.randomUUID().toString());
-    private static final Song SONG_TWO = new Song(UUID.randomUUID().toString(), "SongTwo", "Two", "2018", UUID.randomUUID().toString(), UUID.randomUUID().toString());
-    private static final Song SONG_THREE = new Song(UUID.randomUUID().toString(), "SongThree", "One", "2018", UUID.randomUUID().toString(), UUID.randomUUID().toString());
-    private static final Song SONG_FOUR = new Song(UUID.randomUUID().toString(), "SongFour", "One", "2018", UUID.randomUUID().toString(), UUID.randomUUID().toString());
+    private static final Song SONG_ONE = new Song(UUID.randomUUID().toString(), "SongOne", "1", "2018", UUID.randomUUID().toString(), UUID.randomUUID().toString());
+    private static final Song SONG_TWO = new Song(UUID.randomUUID().toString(), "SongTwo", "2", "2018", UUID.randomUUID().toString(), UUID.randomUUID().toString());
+    private static final Song SONG_THREE = new Song(UUID.randomUUID().toString(), "SongThree", "1", "2018", UUID.randomUUID().toString(), UUID.randomUUID().toString());
+    private static final Song SONG_FOUR = new Song(UUID.randomUUID().toString(), "SongFour", "1", "2018", UUID.randomUUID().toString(), UUID.randomUUID().toString());
     private static final Album ALBUM_ONE = new Album(UUID.randomUUID().toString(), "AlbumOne", new ArrayList<>(Arrays.asList(SONG_ONE, SONG_TWO)));
     private static final Album ALBUM_TWO = new Album(UUID.randomUUID().toString(), "AlbumTwo", new ArrayList<>(Arrays.asList(SONG_THREE)));
     private static final Album ALBUM_THREE = new Album(UUID.randomUUID().toString(), "AlbumThree", new ArrayList<>(Arrays.asList(SONG_FOUR)));
@@ -53,6 +53,7 @@ public class ArtistControllerTest {
     private static final Artist ARTIST_FOUR = new Artist(UUID.randomUUID().toString(), "ArtistFour", null);
     private static final String ARTISTS = "artists";
     private static final String ALBUMS = "albums";
+    private static final String SONGS = "songs";
     private static final String RESPONSE_ENTITY_SAVE_SUCCESSFUL = "Object saved successfully.";
     private static final String RESPONSE_ENTITY_SAVE_UNSUCCESSFUL = "Could not successfully save the object.";
     private static final String RESPONSE_ENTITY_DELETE_SUCCESSFUL = "Object deleted successfully.";
@@ -70,104 +71,137 @@ public class ArtistControllerTest {
 
     @Test
     public void getAllArtists() throws Exception {
-        List<Artist> repoArtists = artistRepository.findAll();
-        Collections.sort(repoArtists);
-        String repoArtistsJson = new ObjectMapper().writeValueAsString(repoArtists);
-        mockMvc.perform(get(String.format("/%s", ARTISTS)))
+        List<Artist> artists = new LinkedList<>(Arrays.asList(ARTIST_ONE, ARTIST_TWO, ARTIST_THREE, ARTIST_FOUR));
+        Collections.sort(artists);
+        mockMvc.perform(get(String.format("/%s", ARTISTS))
+                .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(repoArtistsJson))
+                .andExpect(content().string(new ObjectMapper().writeValueAsString(artists)))
                 .andExpect(status().isOk());
     }
 
     @Test
     public void getArtist() throws Exception {
-        Artist repoArtist = artistRepository.findOne(ARTIST_ONE.id);
-        String repoArtistJson = new ObjectMapper().writeValueAsString(repoArtist);
-        mockMvc.perform(get(String.format("/%s/%s", ARTISTS, ARTIST_ONE.id)))
+        mockMvc.perform(get(String.format("/%s/%s", ARTISTS, ARTIST_ONE.id))
+                .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(repoArtistJson))
+                .andExpect(content().string(new ObjectMapper().writeValueAsString(ARTIST_ONE)))
                 .andExpect(status().isOk());
     }
 
     @Test
     public void postArtist() throws Exception {
-        String artistJson = new ObjectMapper().writeValueAsString(ARTIST_ONE);
         AjaxResponseBody ajaxResponseBody = new AjaxResponseBody(RESPONSE_ENTITY_SAVE_SUCCESSFUL, ARTIST_ONE);
-        String ajaxResponseBodyJson = new ObjectMapper().writeValueAsString(ajaxResponseBody);
         mockMvc.perform(post(String.format("/%s", ARTISTS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
-                .content(artistJson))
-                .andExpect(content().string(ajaxResponseBodyJson))
+                .content(new ObjectMapper().writeValueAsString(ARTIST_ONE)))
+                .andExpect(content().string(new ObjectMapper().writeValueAsString(ajaxResponseBody)))
                 .andExpect(status().isCreated());
         assertEquals(ARTIST_ONE, artistRepository.findOne(ARTIST_ONE.id));
     }
 
     @Test
     public void putArtist() throws Exception {
-        Artist updatedArtist = artistRepository.findOne(ARTIST_ONE.id);
-        updatedArtist.name = "NewArtistOne";
-        artistRepository.save(updatedArtist);
-        String artistJson = new ObjectMapper().writeValueAsString(updatedArtist);
-        AjaxResponseBody ajaxResponseBody = new AjaxResponseBody(RESPONSE_ENTITY_SAVE_SUCCESSFUL, updatedArtist);
-        String ajaxResponseBodyJson = new ObjectMapper().writeValueAsString(ajaxResponseBody);
+        Artist artistToPut = cloneArtist(ARTIST_ONE);
+        artistToPut.name = "NewArtistOne";
+        AjaxResponseBody ajaxResponseBody = new AjaxResponseBody(RESPONSE_ENTITY_SAVE_SUCCESSFUL, artistToPut);
         mockMvc.perform(put(String.format("/%s/%s", ARTISTS, ARTIST_ONE.id))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
-                .content(artistJson))
-                .andExpect(content().string(ajaxResponseBodyJson))
+                .content(new ObjectMapper().writeValueAsString(artistToPut)))
+                .andExpect(content().string(new ObjectMapper().writeValueAsString(ajaxResponseBody)))
                 .andExpect(status().isCreated());
         assertNotEquals(ARTIST_ONE, artistRepository.findOne(ARTIST_ONE.id));
     }
 
     @Test
     public void deleteArtist() throws Exception {
-        List<Artist> artists = artistRepository.findAll();
         mockMvc.perform(delete(String.format("/%s/%s", ARTISTS, ARTIST_TWO.id))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().string(RESPONSE_ENTITY_DELETE_SUCCESSFUL))
                 .andExpect(status().isOk());
-        List<Artist> updatedArtists = artistRepository.findAll();
-        assertEquals(3, updatedArtists.size());
-        assertFalse(updatedArtists.contains(ARTIST_TWO));
+        List<Artist> artistsAfterDelete = artistRepository.findAll();
+        assertEquals(3, artistsAfterDelete.size());
+        assertFalse(artistsAfterDelete.contains(ARTIST_TWO));
     }
 
     @Test
     public void getAllAlbums() throws Exception {
-        List<Album> repoAlbums = artistRepository.findOne(ARTIST_ONE.id).albums;
-        Collections.sort(repoAlbums);
-        String repoAlbumsJson = new ObjectMapper().writeValueAsString(repoAlbums);
-        mockMvc.perform(get(String.format("/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS)))
+        mockMvc.perform(get(String.format("/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS))
+                .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(repoAlbumsJson))
+                .andExpect(content().string(new ObjectMapper().writeValueAsString(ARTIST_ONE.albums)))
                 .andExpect(status().isOk());
     }
 
     @Test
     public void getAlbum() throws Exception {
-        List<Album> repoAlbums = artistRepository.findOne(ARTIST_ONE.id).albums;
-        Collections.sort(repoAlbums);
-        Album repoAlbum = repoAlbums.stream()
-                .filter(album -> album.id == ALBUM_TWO.id)
-                .collect(Collectors.toList())
-                .get(0);
-        String repoAlbumsJson = new ObjectMapper().writeValueAsString(repoAlbum);
-        mockMvc.perform(get(String.format("/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_TWO.id)))
+        mockMvc.perform(get(String.format("/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_TWO.id))
+                .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(repoAlbumsJson))
+                .andExpect(content().string(new ObjectMapper().writeValueAsString(ALBUM_TWO)))
                 .andExpect(status().isOk());
     }
 
     @Test
     public void postAlbum() throws Exception {
-        String albumJson = new ObjectMapper().writeValueAsString(ALBUM_FOUR);
-        AjaxResponseBody ajaxResponseBody = new AjaxResponseBody(RESPONSE_ENTITY_SAVE_SUCCESSFUL, ALBUM_FOUR);
-        String ajaxResponseBodyJson = new ObjectMapper().writeValueAsString(ajaxResponseBody);
         mockMvc.perform(post(String.format("/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
-                .content(albumJson))
+                .content(new ObjectMapper().writeValueAsString(ALBUM_FOUR)))
                 .andExpect(content().string(containsString("\"name\":\"AlbumFour\"")))
                 .andExpect(status().isCreated());
         assertEquals(3, artistRepository.findOne(ARTIST_ONE.id).albums.size());
         assertNotEquals(ARTIST_ONE, artistRepository.findOne(ARTIST_ONE.id));
+    }
+
+    @Test
+    public void putAlbum() throws Exception {
+        Album albumToPut = cloneAlbum(ALBUM_TWO);
+        albumToPut.name = "NewAlbumTwo";
+        AjaxResponseBody ajaxResponseBody = new AjaxResponseBody(RESPONSE_ENTITY_SAVE_SUCCESSFUL, albumToPut);
+        mockMvc.perform(put(String.format("/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_TWO.id))
+                .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
+                .content(new ObjectMapper().writeValueAsString(albumToPut)))
+                .andExpect(content().string(new ObjectMapper().writeValueAsString(ajaxResponseBody)))
+                .andExpect(status().isCreated());
+        assertNotEquals(ARTIST_ONE, artistRepository.findOne(ARTIST_ONE.id));
+    }
+
+    @Test
+    public void deleteAlbum() throws Exception {
+        mockMvc.perform(delete(String.format("/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_TWO.id))
+                .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().string(RESPONSE_ENTITY_DELETE_SUCCESSFUL))
+                .andExpect(status().isOk());
+        Artist artistAfterDelete = artistRepository.findOne(ARTIST_ONE.id);
+        List<Album> albumsAfterDelete = artistAfterDelete.albums;
+        assertEquals(1, albumsAfterDelete.size());
+        assertFalse(albumsAfterDelete.contains(ALBUM_TWO));
+    }
+
+    @Test
+    public void getAllSongs() throws Exception {
+        mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_ONE.id, SONGS))
+                .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().string(new ObjectMapper().writeValueAsString(ALBUM_ONE.songs)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void getSong() throws Exception {
+        mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_ONE.id, SONGS, SONG_TWO.id))
+                .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().string(new ObjectMapper().writeValueAsString(SONG_TWO)))
+                .andExpect(status().isOk());
+    }
+
+    private Artist cloneArtist(Artist artist) {
+        return new Artist(artist.id, artist.name, artist.albums);
+    }
+
+    private Album cloneAlbum(Album album) {
+        return new Album(album.id, album.name, album.songs);
     }
 
 }
