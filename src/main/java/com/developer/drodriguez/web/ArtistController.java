@@ -69,7 +69,7 @@ public class ArtistController {
         Artist repoArtist = findArtist(artistId);
         if (repoArtist != null && artistId.equals(repoArtist.id)) {
             if (artist.albums == null)
-                artist.albums = new ArrayList<>(repoArtist.albums);
+                artist.setAlbums(repoArtist.albums);
             artistRepository.delete(repoArtist.id);
         }
         Artist newArtist = artistRepository.save(new Artist(artistId, artist.name, artist.albums));
@@ -87,7 +87,7 @@ public class ArtistController {
                         deleteFile(song.fileId);
                     }
         artistRepository.delete(artistId);
-        return ResponseEntity.status(HttpStatus.OK).body(RESPONSE_ENTITY_DELETE_SUCCESSFUL);
+        return ResponseEntity.ok(RESPONSE_ENTITY_DELETE_SUCCESSFUL);
     }
 
     /*
@@ -153,7 +153,7 @@ public class ArtistController {
                     break;
                 }
         artistRepository.save(repoArtist);
-        return ResponseEntity.status(HttpStatus.OK).body(RESPONSE_ENTITY_DELETE_SUCCESSFUL);
+        return ResponseEntity.ok(RESPONSE_ENTITY_DELETE_SUCCESSFUL);
     }
 
     /*
@@ -244,7 +244,7 @@ public class ArtistController {
                             break;
                         }
         artistRepository.save(repoArtist);
-        return ResponseEntity.status(HttpStatus.OK).body(RESPONSE_ENTITY_DELETE_SUCCESSFUL);
+        return ResponseEntity.ok(RESPONSE_ENTITY_DELETE_SUCCESSFUL);
     }
 
     @GetMapping(value = "/artists/{artistId}/albums/{albumId}/songs/{songId}/file")

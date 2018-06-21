@@ -12,7 +12,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -22,10 +24,9 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static junit.framework.TestCase.assertTrue;
 import static org.hamcrest.CoreMatchers.containsString;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -36,8 +37,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ContextConfiguration(classes = {FongoConfiguration.class})
 public class ArtistControllerTest {
 
-    @Autowired ArtistController artistController;
-    @Autowired ArtistRepository artistRepository;
+    @Autowired
+    ArtistController artistController;
+    @Autowired
+    ArtistRepository artistRepository;
 
     private static final Song SONG_ONE = new Song(UUID.randomUUID().toString(), "SongOne", "1", "2018", UUID.randomUUID().toString(), UUID.randomUUID().toString());
     private static final Song SONG_TWO = new Song(UUID.randomUUID().toString(), "SongTwo", "2", "2018", UUID.randomUUID().toString(), UUID.randomUUID().toString());
@@ -51,13 +54,16 @@ public class ArtistControllerTest {
     private static final Artist ARTIST_TWO = new Artist(UUID.randomUUID().toString(), "ArtistTwo", new ArrayList<>(Arrays.asList(ALBUM_THREE)));
     private static final Artist ARTIST_THREE = new Artist(UUID.randomUUID().toString(), "ArtistThree", new ArrayList<>(Arrays.asList(ALBUM_FOUR)));
     private static final Artist ARTIST_FOUR = new Artist(UUID.randomUUID().toString(), "ArtistFour", null);
+    private static final byte[] EMPTY_CONTENT = new byte[0];
     private static final String ARTISTS = "artists";
     private static final String ALBUMS = "albums";
     private static final String SONGS = "songs";
+    private static final String UNKNOWN_ID = "unknownId";
     private static final String RESPONSE_ENTITY_SAVE_SUCCESSFUL = "Object saved successfully.";
     private static final String RESPONSE_ENTITY_SAVE_UNSUCCESSFUL = "Could not successfully save the object.";
     private static final String RESPONSE_ENTITY_DELETE_SUCCESSFUL = "Object deleted successfully.";
     private static final String RESPONSE_ENTITY_ARTIST_NOT_FOUND = "Could not find an existing object to save to.";
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private MockMvc mockMvc;
 
     @Before
@@ -76,7 +82,16 @@ public class ArtistControllerTest {
         mockMvc.perform(get(String.format("/%s", ARTISTS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(new ObjectMapper().writeValueAsString(artists)))
+                .andExpect(content().string(OBJECT_MAPPER.writeValueAsString(artists)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void getAllArtistsNoneExist() throws Exception {
+        artistRepository.deleteAll();
+        mockMvc.perform(get(String.format("/%s", ARTISTS))
+                .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().string(OBJECT_MAPPER.writeValueAsString(Collections.EMPTY_LIST)))
                 .andExpect(status().isOk());
     }
 
@@ -85,7 +100,15 @@ public class ArtistControllerTest {
         mockMvc.perform(get(String.format("/%s/%s", ARTISTS, ARTIST_ONE.id))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(new ObjectMapper().writeValueAsString(ARTIST_ONE)))
+                .andExpect(content().string(OBJECT_MAPPER.writeValueAsString(ARTIST_ONE)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void getArtistNoneExist() throws Exception {
+        mockMvc.perform(get(String.format("/%s/%s", ARTISTS, UNKNOWN_ID))
+                .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().bytes(EMPTY_CONTENT))
                 .andExpect(status().isOk());
     }
 
@@ -94,8 +117,8 @@ public class ArtistControllerTest {
         AjaxResponseBody ajaxResponseBody = new AjaxResponseBody(RESPONSE_ENTITY_SAVE_SUCCESSFUL, ARTIST_ONE);
         mockMvc.perform(post(String.format("/%s", ARTISTS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
-                .content(new ObjectMapper().writeValueAsString(ARTIST_ONE)))
-                .andExpect(content().string(new ObjectMapper().writeValueAsString(ajaxResponseBody)))
+                .content(OBJECT_MAPPER.writeValueAsString(ARTIST_ONE)))
+                .andExpect(content().string(OBJECT_MAPPER.writeValueAsString(ajaxResponseBody)))
                 .andExpect(status().isCreated());
         assertEquals(ARTIST_ONE, artistRepository.findOne(ARTIST_ONE.id));
     }
@@ -107,10 +130,24 @@ public class ArtistControllerTest {
         AjaxResponseBody ajaxResponseBody = new AjaxResponseBody(RESPONSE_ENTITY_SAVE_SUCCESSFUL, artistToPut);
         mockMvc.perform(put(String.format("/%s/%s", ARTISTS, ARTIST_ONE.id))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
-                .content(new ObjectMapper().writeValueAsString(artistToPut)))
-                .andExpect(content().string(new ObjectMapper().writeValueAsString(ajaxResponseBody)))
+                .content(OBJECT_MAPPER.writeValueAsString(artistToPut)))
+                .andExpect(content().string(OBJECT_MAPPER.writeValueAsString(ajaxResponseBody)))
                 .andExpect(status().isCreated());
         assertNotEquals(ARTIST_ONE, artistRepository.findOne(ARTIST_ONE.id));
+    }
+
+    @Test
+    public void putArtistNoAlbumsExist() throws Exception {
+        Artist artistToPut = cloneArtist(ARTIST_FOUR);
+        artistToPut.name = "NewArtistFour";
+        artistToPut.albums = null;
+        AjaxResponseBody ajaxResponseBody = new AjaxResponseBody(RESPONSE_ENTITY_SAVE_SUCCESSFUL, artistToPut);
+        mockMvc.perform(put(String.format("/%s/%s", ARTISTS, ARTIST_FOUR.id))
+                .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
+                .content(OBJECT_MAPPER.writeValueAsString(artistToPut)))
+                .andExpect(content().string(OBJECT_MAPPER.writeValueAsString(ajaxResponseBody)))
+                .andExpect(status().isCreated());
+        assertNotEquals(ARTIST_FOUR, artistRepository.findOne(ARTIST_FOUR.id));
     }
 
     @Test
@@ -129,7 +166,7 @@ public class ArtistControllerTest {
         mockMvc.perform(get(String.format("/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(new ObjectMapper().writeValueAsString(ARTIST_ONE.albums)))
+                .andExpect(content().string(OBJECT_MAPPER.writeValueAsString(ARTIST_ONE.albums)))
                 .andExpect(status().isOk());
     }
 
@@ -138,7 +175,7 @@ public class ArtistControllerTest {
         mockMvc.perform(get(String.format("/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_TWO.id))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(new ObjectMapper().writeValueAsString(ALBUM_TWO)))
+                .andExpect(content().string(OBJECT_MAPPER.writeValueAsString(ALBUM_TWO)))
                 .andExpect(status().isOk());
     }
 
@@ -146,11 +183,32 @@ public class ArtistControllerTest {
     public void postAlbum() throws Exception {
         mockMvc.perform(post(String.format("/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
-                .content(new ObjectMapper().writeValueAsString(ALBUM_FOUR)))
+                .content(OBJECT_MAPPER.writeValueAsString(ALBUM_FOUR)))
                 .andExpect(content().string(containsString("\"name\":\"AlbumFour\"")))
                 .andExpect(status().isCreated());
         assertEquals(3, artistRepository.findOne(ARTIST_ONE.id).albums.size());
         assertNotEquals(ARTIST_ONE, artistRepository.findOne(ARTIST_ONE.id));
+    }
+
+    @Test
+    public void postAlbumNoneExist() throws Exception {
+        mockMvc.perform(post(String.format("/%s/%s/%s", ARTISTS, ARTIST_FOUR.id, ALBUMS))
+                .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
+                .content(OBJECT_MAPPER.writeValueAsString(ALBUM_FOUR)))
+                .andExpect(content().string(containsString("\"name\":\"AlbumFour\"")))
+                .andExpect(status().isCreated());
+        assertEquals(1, artistRepository.findOne(ARTIST_FOUR.id).albums.size());
+        assertNotEquals(ALBUM_FOUR, artistRepository.findOne(ARTIST_FOUR.id));
+    }
+
+    @Test
+    public void postAlbumNoArtistExists() throws Exception {
+        AjaxResponseBody ajaxResponseBody = new AjaxResponseBody(RESPONSE_ENTITY_ARTIST_NOT_FOUND);
+        mockMvc.perform(post(String.format("/%s/%s/%s", ARTISTS, UNKNOWN_ID, ALBUMS))
+                .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
+                .content(OBJECT_MAPPER.writeValueAsString(ALBUM_FOUR)))
+                .andExpect(content().string(OBJECT_MAPPER.writeValueAsString(ajaxResponseBody)))
+                .andExpect(status().isUnprocessableEntity());
     }
 
     @Test
@@ -160,8 +218,8 @@ public class ArtistControllerTest {
         AjaxResponseBody ajaxResponseBody = new AjaxResponseBody(RESPONSE_ENTITY_SAVE_SUCCESSFUL, albumToPut);
         mockMvc.perform(put(String.format("/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_TWO.id))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
-                .content(new ObjectMapper().writeValueAsString(albumToPut)))
-                .andExpect(content().string(new ObjectMapper().writeValueAsString(ajaxResponseBody)))
+                .content(OBJECT_MAPPER.writeValueAsString(albumToPut)))
+                .andExpect(content().string(OBJECT_MAPPER.writeValueAsString(ajaxResponseBody)))
                 .andExpect(status().isCreated());
         assertNotEquals(ARTIST_ONE, artistRepository.findOne(ARTIST_ONE.id));
     }
@@ -183,7 +241,7 @@ public class ArtistControllerTest {
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_ONE.id, SONGS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(new ObjectMapper().writeValueAsString(ALBUM_ONE.songs)))
+                .andExpect(content().string(OBJECT_MAPPER.writeValueAsString(ALBUM_ONE.songs)))
                 .andExpect(status().isOk());
     }
 
@@ -192,8 +250,53 @@ public class ArtistControllerTest {
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_ONE.id, SONGS, SONG_TWO.id))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(new ObjectMapper().writeValueAsString(SONG_TWO)))
+                .andExpect(content().string(OBJECT_MAPPER.writeValueAsString(SONG_TWO)))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    public void putSong() throws Exception {
+        Song songToPut = cloneSong(SONG_THREE);
+        songToPut.name = "NewSongThree";
+        AjaxResponseBody ajaxResponseBody = new AjaxResponseBody(RESPONSE_ENTITY_SAVE_SUCCESSFUL, songToPut);
+        mockMvc.perform(put(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_TWO.id, SONGS, SONG_THREE.id))
+                .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
+                .content(OBJECT_MAPPER.writeValueAsString(songToPut)))
+                .andExpect(content().string(OBJECT_MAPPER.writeValueAsString(ajaxResponseBody)))
+                .andExpect(status().isCreated());
+        assertNotEquals(ARTIST_ONE, artistRepository.findOne(ARTIST_ONE.id));
+    }
+
+    @Test
+    public void deleteSong() throws Exception {
+        mockMvc.perform(delete(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_ONE.id, SONGS, SONG_ONE.id))
+                .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().string(RESPONSE_ENTITY_DELETE_SUCCESSFUL))
+                .andExpect(status().isOk());
+        Artist artistAfterDelete = artistRepository.findOne(ARTIST_ONE.id);
+        Album albumAfterDelete = artistAfterDelete.albums.stream()
+                .filter(album -> album.id == ALBUM_ONE.id)
+                .collect(Collectors.toList())
+                .get(0);
+        List<Song> songsAfterDelete = albumAfterDelete.songs;
+        assertEquals(1, songsAfterDelete.size());
+        assertFalse(songsAfterDelete.contains(SONG_ONE));
+        assertTrue(songsAfterDelete.contains(SONG_TWO));
+    }
+
+    @Test
+    public void deleteSongOneRemaining() throws Exception {
+        mockMvc.perform(delete(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_TWO.id, SONGS, SONG_THREE.id))
+                .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().string(RESPONSE_ENTITY_DELETE_SUCCESSFUL))
+                .andExpect(status().isOk());
+        Artist artistAfterDelete = artistRepository.findOne(ARTIST_ONE.id);
+        Album albumAfterDelete = artistAfterDelete.albums.stream()
+                .filter(album -> album.id == ALBUM_TWO.id)
+                .collect(Collectors.toList())
+                .get(0);
+        List<Song> songsAfterDelete = albumAfterDelete.songs;
+        assertTrue(songsAfterDelete.isEmpty());
     }
 
     private Artist cloneArtist(Artist artist) {
@@ -202,6 +305,10 @@ public class ArtistControllerTest {
 
     private Album cloneAlbum(Album album) {
         return new Album(album.id, album.name, album.songs);
+    }
+
+    private Song cloneSong(Song song) {
+        return new Song(song.id, song.name, song.trackNumber, song.year, song.fileId, song.artworkFileId);
     }
 
 }
