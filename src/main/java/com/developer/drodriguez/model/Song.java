@@ -11,12 +11,12 @@ import java.util.UUID;
 public class Song implements Comparable<Song> {
 
     @Id
-    public String id;
-    public String name;
-    public String trackNumber;
-    public String year;
-    public String fileId;
-    public String artworkFileId;
+    private String id;
+    private String name;
+    private String trackNumber;
+    private String year;
+    private String fileId;
+    private String artworkFileId;
 
     public Song() {}
 

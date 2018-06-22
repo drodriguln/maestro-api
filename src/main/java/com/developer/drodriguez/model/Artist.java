@@ -11,9 +11,9 @@ import java.util.List;
 public class Artist implements Comparable<Artist> {
 
     @Id
-    public String id;
-    public String name;
-    public List<Album> albums;
+    private String id;
+    private String name;
+    private List<Album> albums;
 
     public Artist() {}
 

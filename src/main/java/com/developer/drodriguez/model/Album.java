@@ -12,9 +12,9 @@ import java.util.UUID;
 public class Album implements Comparable<Album> {
 
     @Id
-    public String id;
-    public String name;
-    public List<Song> songs;
+    private String id;
+    private String name;
+    private List<Song> songs;
 
     public Album() {}
 
