@@ -263,29 +263,29 @@ public class ArtistController {
         return (song != null) ? findFile(song.getArtworkFileId()) : ResponseEntity.ok(null);
     }
 
-    private Artist findArtist(String artistId) {
+    protected Artist findArtist(String artistId) {
         return artistRepository.findOne(artistId);
     }
 
-    private Album findAlbum(String artistId, String albumId) {
+    protected Album findAlbum(String artistId, String albumId) {
         Artist repoArtist = findArtist(artistId);
-        if (repoArtist != null)
+        if (repoArtist != null && repoArtist.getAlbums() != null)
             for (Album repoAlbum : repoArtist.getAlbums())
                 if (repoAlbum.getId().equals(albumId))
                     return repoAlbum;
         return null;
     }
 
-    private Song findSong(String artistId, String albumId, String songId) {
+    protected Song findSong(String artistId, String albumId, String songId) {
         Album repoAlbum = findAlbum(artistId, albumId);
-        if (repoAlbum != null)
+        if (repoAlbum != null && repoAlbum.getSongs() != null)
             for (Song repoSong : repoAlbum.getSongs())
                 if (repoSong.getId().equals(songId))
                     return repoSong;
         return null;
     }
 
-    private ResponseEntity<byte[]> findFile(String fileId) throws IOException {
+    protected ResponseEntity<byte[]> findFile(String fileId) throws IOException {
         GridFSDBFile gridFSDBFile = gridFsTemplate.findOne(new Query(Criteria.where("_id").is(fileId)));
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         gridFSDBFile.writeTo(outputStream);
@@ -296,7 +296,7 @@ public class ArtistController {
         return ResponseEntity.ok(null);
     }
 
-    private ResponseEntity<byte[]> deleteFile(String fileId) throws IOException {
+    protected ResponseEntity<byte[]> deleteFile(String fileId) throws IOException {
         gridFsTemplate.delete(new Query(Criteria.where("_id").is(fileId)));
         return ResponseEntity.ok(null);
     }

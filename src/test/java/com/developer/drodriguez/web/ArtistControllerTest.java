@@ -509,6 +509,41 @@ public class ArtistControllerTest {
         assertTrue(songsAfterDelete.contains(SONG_TWO));
     }
 
+    @Test
+    public void findArtist() {
+        assertEquals(artistRepository.findOne(ARTIST_ONE.getId()), artistController.findArtist(ARTIST_ONE.getId()));
+    }
+
+    @Test
+    public void findAlbum() {
+        assertEquals(artistController.findAlbum(ARTIST_ONE.getId(), ALBUM_ONE.getId()), ALBUM_ONE);
+    }
+
+    @Test
+    public void findAlbumNull() {
+        assertNull(artistController.findAlbum(ARTIST_FOUR.getId(), UNKNOWN_ID));
+    }
+
+    @Test
+    public void findAlbumNoMatch() {
+        assertNull(artistController.findAlbum(ARTIST_ONE.getId(), UNKNOWN_ID));
+    }
+
+    @Test
+    public void findSong() {
+        assertEquals(artistController.findSong(ARTIST_ONE.getId(), ALBUM_ONE.getId(), SONG_ONE.getId()), SONG_ONE);
+    }
+
+    @Test
+    public void findSongNull() {
+        assertNull(artistController.findSong(ARTIST_THREE.getId(), ALBUM_FOUR.getId(), UNKNOWN_ID));
+    }
+
+    @Test
+    public void findSongNoMatch() {
+        assertNull(artistController.findSong(ARTIST_TWO.getId(), ALBUM_THREE.getId(), UNKNOWN_ID));
+    }
+
     private Artist cloneArtist(Artist artist) {
         return new Artist(artist.getId(), artist.getName(), artist.getAlbums());
     }
