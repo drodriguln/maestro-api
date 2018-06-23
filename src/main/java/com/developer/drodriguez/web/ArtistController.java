@@ -5,6 +5,7 @@ import com.developer.drodriguez.domain.ArtistRepository;
 import com.mongodb.gridfs.GridFSDBFile;
 import com.mongodb.gridfs.GridFSFile;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.gridfs.GridFsTemplate;
@@ -40,7 +41,7 @@ public class ArtistController {
     private static final String RESPONSE_ENTITY_SAVE_SUCCESSFUL = "Object saved successfully.";
     private static final String RESPONSE_ENTITY_SAVE_UNSUCCESSFUL = "Could not successfully save the object.";
     private static final String RESPONSE_ENTITY_DELETE_SUCCESSFUL = "Object deleted successfully.";
-    private static final String RESPONSE_ENTITY_ARTIST_NOT_FOUND = "Could not find an existing object to save to.";
+    private static final String RESPONSE_ENTITY_DELETE_UNSUCCESSFUL = "Could not successfully delete the object.";
 
     /*
      *  Artist
@@ -48,9 +49,7 @@ public class ArtistController {
 
     @GetMapping("/artists")
     public ResponseEntity<List<Artist>> getAllArtists() {
-        List<Artist> repoArtist = artistRepository.findAll();
-        Collections.sort(repoArtist);
-        return ResponseEntity.ok(repoArtist);
+        return ResponseEntity.ok(artistRepository.findAll(new Sort(Sort.Direction.DESC, "name")));
     }
 
     @GetMapping("/artists/{artistId}")
@@ -110,7 +109,7 @@ public class ArtistController {
     public ResponseEntity<AjaxResponseBody> postAlbum(@PathVariable String artistId, @RequestBody Album album) {
         Artist repoArtist = findArtist(artistId);
         if (repoArtist == null)
-            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(new AjaxResponseBody(RESPONSE_ENTITY_ARTIST_NOT_FOUND));
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(new AjaxResponseBody(RESPONSE_ENTITY_SAVE_UNSUCCESSFUL));
         if (repoArtist.getAlbums() == null)
             repoArtist.setAlbums(new ArrayList<>());
         Album newAlbum = new Album(UUID.randomUUID().toString(), album.getName(), album.getSongs());
@@ -123,11 +122,11 @@ public class ArtistController {
     public ResponseEntity<AjaxResponseBody> putAlbum(@PathVariable String artistId, @PathVariable String albumId, @RequestBody Album album) {
         Artist repoArtist = findArtist(artistId);
         if (repoArtist == null)
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new AjaxResponseBody(RESPONSE_ENTITY_ARTIST_NOT_FOUND));
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(new AjaxResponseBody(RESPONSE_ENTITY_SAVE_UNSUCCESSFUL));
         for (Album repoAlbum : repoArtist.getAlbums())
             if (albumId.equals(repoAlbum.getId())) {
                 if (album.getSongs() == null)
-                    album.setSongs(new ArrayList<>(repoAlbum.getSongs()));
+                    album.setSongs(repoAlbum.getSongs());
                 repoArtist.getAlbums().remove(repoAlbum);
                 break;
             }
@@ -141,7 +140,7 @@ public class ArtistController {
     public ResponseEntity<String> deleteAlbum(@PathVariable String artistId, @PathVariable String albumId) throws IOException {
         Artist repoArtist = findArtist(artistId);
         if (repoArtist == null)
-            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(RESPONSE_ENTITY_ARTIST_NOT_FOUND);
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(RESPONSE_ENTITY_DELETE_UNSUCCESSFUL);
         if (repoArtist.getAlbums() != null)
             for (Album album : repoArtist.getAlbums())
                 if (albumId.equals(album.getId()) && album.getSongs() != null) {
@@ -189,8 +188,8 @@ public class ArtistController {
             trackNumber = "0";
         Song newSong = new Song(songName, trackNumber, year, songFile.getId().toString(), artworkFile.getId().toString());
         Artist repoArtist = findArtist(artistId);
-        if (repoArtist == null)
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AjaxResponseBody(RESPONSE_ENTITY_SAVE_UNSUCCESSFUL));
+        if (repoArtist == null || repoArtist.getAlbums() == null)
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(new AjaxResponseBody(RESPONSE_ENTITY_SAVE_UNSUCCESSFUL));
         for (Album repoAlbum : repoArtist.getAlbums()) {
             if (albumId.equals(repoAlbum.getId())) {
                 if (repoAlbum.getSongs() == null)
@@ -202,15 +201,15 @@ public class ArtistController {
                 return ResponseEntity.status(HttpStatus.CREATED).body(new AjaxResponseBody(RESPONSE_ENTITY_SAVE_SUCCESSFUL, newSong));
             }
         }
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AjaxResponseBody(RESPONSE_ENTITY_SAVE_UNSUCCESSFUL));
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(new AjaxResponseBody(RESPONSE_ENTITY_SAVE_UNSUCCESSFUL));
     }
 
     @PutMapping("/artists/{artistId}/albums/{albumId}/songs/{songId}")
     public ResponseEntity<AjaxResponseBody> putSong(@PathVariable String artistId, @PathVariable String albumId, @PathVariable String songId,
                         @RequestBody Song song) {
         Artist repoArtist = findArtist(artistId);
-        if (repoArtist == null)
-            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(new AjaxResponseBody(RESPONSE_ENTITY_ARTIST_NOT_FOUND));
+        if (repoArtist == null || repoArtist.getAlbums() == null)
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(new AjaxResponseBody(RESPONSE_ENTITY_SAVE_UNSUCCESSFUL));
         for (Album repoAlbum : repoArtist.getAlbums())
             if (albumId.equals(repoAlbum.getId())) {
                 for (Song repoSong : repoAlbum.getSongs())
@@ -235,20 +234,19 @@ public class ArtistController {
     @DeleteMapping("/artists/{artistId}/albums/{albumId}/songs/{songId}")
     public ResponseEntity<String> deleteSong(@PathVariable String artistId, @PathVariable String albumId, @PathVariable String songId) throws IOException {
         Artist repoArtist = findArtist(artistId);
-        if (repoArtist == null)
-            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(RESPONSE_ENTITY_ARTIST_NOT_FOUND);
-        if (repoArtist.getAlbums() != null)
-            for (Album album : repoArtist.getAlbums())
-                if (albumId.equals(album.getId()) && album.getSongs() != null)
-                    for (Song song : album.getSongs())
-                        if (songId.equals(song.getId())) {
-                            deleteFile(song.getArtworkFileId());
-                            deleteFile(song.getFileId());
-                            List<Song> repoSongs = album.getSongs();
-                            repoSongs.remove(song);
-                            album.setSongs(repoSongs);
-                            break;
-                        }
+        if (repoArtist == null || repoArtist.getAlbums() == null)
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(RESPONSE_ENTITY_DELETE_UNSUCCESSFUL);
+        for (Album album : repoArtist.getAlbums())
+            if (albumId.equals(album.getId()) && album.getSongs() != null)
+                for (Song song : album.getSongs())
+                    if (songId.equals(song.getId())) {
+                        deleteFile(song.getArtworkFileId());
+                        deleteFile(song.getFileId());
+                        List<Song> repoSongs = album.getSongs();
+                        repoSongs.remove(song);
+                        album.setSongs(repoSongs);
+                        break;
+                    }
         artistRepository.save(repoArtist);
         return ResponseEntity.ok(RESPONSE_ENTITY_DELETE_SUCCESSFUL);
     }
