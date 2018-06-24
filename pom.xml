@@ -4,12 +4,12 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.developer.drodriguez</groupId>
-	<artifactId>music-maestro-evolved</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<artifactId>maestro-api</artifactId>
+	<version>0.2.0</version>
 	<packaging>jar</packaging>
 
-	<name>music-maestro-evolved</name>
-	<description>A remake of Music Maestro</description>
+	<name>Maestro API</name>
+	<description>A RESTful API for music management.</description>
 
 	<parent>
 		<groupId>org.springframework.boot</groupId>
