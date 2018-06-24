@@ -20,7 +20,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.mongodb.gridfs.GridFsTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
@@ -446,7 +445,7 @@ public class ArtistControllerTest {
     @Test
     public void postSongEmptyAlbumList() throws Exception {
         Artist artistWithEmptyAlbumList = cloneArtist(ARTIST_FOUR);
-        artistWithEmptyAlbumList.setAlbums(Collections.EMPTY_LIST);
+        artistWithEmptyAlbumList.setAlbums(new ArrayList<>());
         artistRepository.save(artistWithEmptyAlbumList);
         mockMvc.perform(fileUpload(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_FOUR.getId(), ALBUMS, ALBUM_FOUR.getId(), SONGS))
                 .file(SONG_FILE_ONE)
@@ -543,7 +542,7 @@ public class ArtistControllerTest {
                 .andExpect(status().isOk());
         Artist artistAfterDelete = artistRepository.findOne(ARTIST_ONE.getId());
         Album albumAfterDelete = artistAfterDelete.getAlbums().stream()
-                .filter(album -> album.getId() == ALBUM_ONE.getId())
+                .filter(album -> album.getId().equals(ALBUM_ONE.getId()))
                 .collect(Collectors.toList())
                 .get(0);
         List<Song> songsAfterDelete = albumAfterDelete.getSongs();
@@ -560,7 +559,7 @@ public class ArtistControllerTest {
                 .andExpect(status().isOk());
         Artist artistAfterDelete = artistRepository.findOne(ARTIST_ONE.getId());
         Album albumAfterDelete = artistAfterDelete.getAlbums().stream()
-                .filter(album -> album.getId() == ALBUM_TWO.getId())
+                .filter(album -> album.getId().equals(ALBUM_TWO.getId()))
                 .collect(Collectors.toList())
                 .get(0);
         List<Song> songsAfterDelete = albumAfterDelete.getSongs();
@@ -631,7 +630,7 @@ public class ArtistControllerTest {
 
     @Test
     public void getSongFile() throws Exception {
-        setupGridFsDbFileMock();
+        setupGridFsDbFileMock(FILE_ID, FILE_NAME, FILE_CONTENT_TYPE);
         when(artistRepositoryMock.findOne(anyString())).thenReturn(ARTIST_ONE);
         mockMvc = MockMvcBuilders.standaloneSetup(artistControllerSpy).build();
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_ONE.getId(), SONGS, SONG_ONE.getId(), FILE))
@@ -642,7 +641,7 @@ public class ArtistControllerTest {
 
     @Test
     public void getSongFileNull() throws Exception {
-        setupGridFsDbFileMock();
+        setupGridFsDbFileMock(FILE_ID, FILE_NAME, FILE_CONTENT_TYPE);
         when(artistRepositoryMock.findOne(anyString())).thenReturn(ARTIST_TWO);
         mockMvc = MockMvcBuilders.standaloneSetup(artistControllerSpy).build();
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_TWO.getId(), ALBUMS, ALBUM_TWO.getId(), SONGS, SONG_THREE.getId(), FILE))
@@ -653,18 +652,18 @@ public class ArtistControllerTest {
 
     @Test
     public void getSongArtwork() throws Exception {
-        setupGridFsDbFileMock();
+        setupGridFsDbFileMock(ARTWORK_ID, ARTWORK_NAME, ARTWORK_CONTENT_TYPE);
         when(artistRepositoryMock.findOne(anyString())).thenReturn(ARTIST_ONE);
         mockMvc = MockMvcBuilders.standaloneSetup(artistControllerSpy).build();
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_ONE.getId(), SONGS, SONG_ONE.getId(), ARTWORK))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().contentType(FILE_CONTENT_TYPE))
+                .andExpect(content().contentType(ARTWORK_CONTENT_TYPE))
                 .andExpect(status().isOk());
     }
 
     @Test
     public void getSongArtworkNull() throws Exception {
-        setupGridFsDbFileMock();
+        setupGridFsDbFileMock(ARTWORK_ID, ARTWORK_NAME, ARTWORK_CONTENT_TYPE);
         when(artistRepositoryMock.findOne(anyString())).thenReturn(ARTIST_TWO);
         mockMvc = MockMvcBuilders.standaloneSetup(artistControllerSpy).build();
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_TWO.getId(), ALBUMS, ALBUM_TWO.getId(), SONGS, SONG_THREE.getId(), ARTWORK))
@@ -675,7 +674,7 @@ public class ArtistControllerTest {
 
     @Test
     public void findFile() throws IOException {
-        setupGridFsDbFileMock();
+        setupGridFsDbFileMock(FILE_ID, FILE_NAME, FILE_CONTENT_TYPE);
         assertEquals(HttpStatus.OK, artistControllerSpy.findFile(FILE_ID).getStatusCode());
         assertTrue(artistControllerSpy.findFile(FILE_ID).hasBody());
     }
@@ -709,10 +708,10 @@ public class ArtistControllerTest {
         return new ObjectMapper().writeValueAsString(object);
     }
 
-    private void setupGridFsDbFileMock() {
-        when(gridFsDbFile.getId()).thenReturn(FILE_ID);
-        when(gridFsDbFile.getFilename()).thenReturn(FILE_NAME);
-        when(gridFsDbFile.getContentType()).thenReturn(FILE_CONTENT_TYPE);
+    private void setupGridFsDbFileMock(String id, String name, String contentType) {
+        when(gridFsDbFile.getId()).thenReturn(id);
+        when(gridFsDbFile.getFilename()).thenReturn(name);
+        when(gridFsDbFile.getContentType()).thenReturn(contentType);
         when(gridFsDbFile.getLength()).thenReturn(FILE_LENGTH);
         when(gridFsDbFile.getUploadDate()).thenReturn(FILE_UPLOAD_DATE);
         when(gridFsTemplate.findOne(anyObject())).thenReturn(gridFsDbFile);
