@@ -76,12 +76,8 @@ public class ArtistController {
                 .findFirst();
         if (repoAlbumOptional.isPresent() && repoAlbumOptional.get().getSongs() != null) {
             for (Song song : repoAlbumOptional.get().getSongs()) {
-                try {
-                    deleteFile(song.getArtworkFileId());
-                    deleteFile(song.getFileId());
-                } catch (IOException e) {
-                    return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(RESPONSE_ENTITY_DELETE_UNSUCCESSFUL);
-                }
+                deleteFile(song.getArtworkFileId());
+                deleteFile(song.getFileId());
             }
         }
         artistRepository.delete(artistId);
@@ -203,8 +199,6 @@ public class ArtistController {
         if (repoAlbumOptional.get().getSongs() == null)
             repoAlbumOptional.get().setSongs(new ArrayList<>());
         List<Song> repoSongs = repoAlbumOptional.get().getSongs();
-        if (repoSongs == null)
-            repoSongs = new ArrayList<Song>();
         repoSongs.add(newSong);
         repoAlbumOptional.get().setSongs(repoSongs);
         artistRepository.save(repoArtistOptional.get());
@@ -219,7 +213,6 @@ public class ArtistController {
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(new AjaxResponseBody(RESPONSE_ENTITY_SAVE_UNSUCCESSFUL));
         Optional<Album> repoAlbumOptional = repoArtistOptional.get().getAlbums().stream()
                 .filter(repoAlbum -> albumId.equals(repoAlbum.getId()))
-                .filter(repoAlbum -> repoAlbum.getSongs() != null)
                 .findFirst();
         if (!repoAlbumOptional.isPresent() || repoAlbumOptional.get().getSongs() == null)
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(new AjaxResponseBody(RESPONSE_ENTITY_SAVE_UNSUCCESSFUL));
@@ -248,7 +241,7 @@ public class ArtistController {
                 .filter(repoAlbum -> albumId.equals(repoAlbum.getId()))
                 .findFirst();
         if (!repoAlbumOptional.isPresent() || repoAlbumOptional.get().getSongs() == null)
-            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(RESPONSE_ENTITY_SAVE_UNSUCCESSFUL);
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(RESPONSE_ENTITY_DELETE_UNSUCCESSFUL);
         Optional<Song> repoSongOptional = repoAlbumOptional.get().getSongs().stream()
                     .filter(repoSong -> songId.equals(repoSong.getId()))
                     .findFirst();
@@ -300,16 +293,16 @@ public class ArtistController {
 
     protected ResponseEntity<byte[]> findFile(String fileId) throws IOException {
         GridFSDBFile gridFSDBFile = gridFsTemplate.findOne(new Query(Criteria.where("_id").is(fileId)));
+        if (gridFSDBFile == null)
+            return ResponseEntity.ok(null);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         gridFSDBFile.writeTo(outputStream);
         HttpHeaders responseHeaders = new HttpHeaders();
         responseHeaders.setContentType(MediaType.parseMediaType(gridFSDBFile.getContentType()));
-        if (gridFSDBFile != null)
-            return new ResponseEntity<>(outputStream.toByteArray(), responseHeaders, HttpStatus.OK);
-        return ResponseEntity.ok(null);
+        return new ResponseEntity<>(outputStream.toByteArray(), responseHeaders, HttpStatus.OK);
     }
 
-    protected ResponseEntity<byte[]> deleteFile(String fileId) throws IOException {
+    protected ResponseEntity<byte[]> deleteFile(String fileId) {
         gridFsTemplate.delete(new Query(Criteria.where("_id").is(fileId)));
         return ResponseEntity.ok(null);
     }
