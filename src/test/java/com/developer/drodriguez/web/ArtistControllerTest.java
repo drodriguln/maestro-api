@@ -385,7 +385,7 @@ public class ArtistControllerTest {
     }
 
     @Test
-    public void postSongNoSongExists() throws Exception {
+    public void postSongNoneExist() throws Exception {
         mockMvc.perform(fileUpload(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_THREE.getId(), ALBUMS, ALBUM_FOUR.getId(), SONGS))
                 .file(SONG_FILE_ONE)
                 .file(ARTWORK_FILE_ONE)
@@ -511,37 +511,40 @@ public class ArtistControllerTest {
 
     @Test
     public void findArtist() {
-        assertEquals(artistRepository.findOne(ARTIST_ONE.getId()), artistController.findArtist(ARTIST_ONE.getId()));
+        assertTrue(artistController.findArtist(ARTIST_ONE.getId()).isPresent());
+        assertEquals(artistRepository.findOne(ARTIST_ONE.getId()), artistController.findArtist(ARTIST_ONE.getId()).get());
     }
 
     @Test
     public void findAlbum() {
-        assertEquals(artistController.findAlbum(ARTIST_ONE.getId(), ALBUM_ONE.getId()), ALBUM_ONE);
+        assertTrue(artistController.findAlbum(ARTIST_ONE.getId(), ALBUM_ONE.getId()).isPresent());
+        assertEquals(ALBUM_ONE, artistController.findAlbum(ARTIST_ONE.getId(), ALBUM_ONE.getId()).get());
     }
 
     @Test
     public void findAlbumNull() {
-        assertNull(artistController.findAlbum(ARTIST_FOUR.getId(), UNKNOWN_ID));
+        assertFalse(artistController.findAlbum(ARTIST_FOUR.getId(), UNKNOWN_ID).isPresent());
     }
 
     @Test
     public void findAlbumNoMatch() {
-        assertNull(artistController.findAlbum(ARTIST_ONE.getId(), UNKNOWN_ID));
+        assertFalse(artistController.findAlbum(ARTIST_ONE.getId(), UNKNOWN_ID).isPresent());
     }
 
     @Test
     public void findSong() {
-        assertEquals(artistController.findSong(ARTIST_ONE.getId(), ALBUM_ONE.getId(), SONG_ONE.getId()), SONG_ONE);
+        assertTrue(artistController.findSong(ARTIST_ONE.getId(), ALBUM_ONE.getId(), SONG_ONE.getId()).isPresent());
+        assertEquals(artistController.findSong(ARTIST_ONE.getId(), ALBUM_ONE.getId(), SONG_ONE.getId()).get(), SONG_ONE);
     }
 
     @Test
     public void findSongNull() {
-        assertNull(artistController.findSong(ARTIST_THREE.getId(), ALBUM_FOUR.getId(), UNKNOWN_ID));
+        assertFalse(artistController.findSong(ARTIST_THREE.getId(), ALBUM_FOUR.getId(), UNKNOWN_ID).isPresent());
     }
 
     @Test
     public void findSongNoMatch() {
-        assertNull(artistController.findSong(ARTIST_TWO.getId(), ALBUM_THREE.getId(), UNKNOWN_ID));
+        assertFalse(artistController.findSong(ARTIST_TWO.getId(), ALBUM_THREE.getId(), UNKNOWN_ID).isPresent());
     }
 
     private Artist cloneArtist(Artist artist) {

@@ -8,7 +8,7 @@ import java.util.List;
 
 @Data
 @Document
-public class Artist implements Comparable<Artist> {
+public class Artist {
 
     @Id
     private String id;
@@ -26,11 +26,6 @@ public class Artist implements Comparable<Artist> {
     public Artist(String name, List<Album> albums) {
         this.name = name;
         this.albums = albums;
-    }
-
-    @Override
-    public int compareTo(Artist artist) {
-        return this.name.compareTo(artist.name);
     }
 
 }
