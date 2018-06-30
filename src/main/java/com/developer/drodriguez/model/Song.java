@@ -1,12 +1,16 @@
 package com.developer.drodriguez.model;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.UUID;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 @Document
 public class Song implements Comparable<Song> {
 
@@ -17,17 +21,6 @@ public class Song implements Comparable<Song> {
     private String year;
     private String fileId;
     private String artworkFileId;
-
-    public Song() {}
-
-    public Song(String id, String name, String trackNumber, String year, String fileId, String artworkFileId) {
-        this.id = id;
-        this.name = name;
-        this.trackNumber = trackNumber;
-        this.year = year;
-        this.fileId = fileId;
-        this.artworkFileId = artworkFileId;
-    }
 
     public Song(String name, String trackNumber, String year, String fileId, String artworkFileId) {
         this.id = UUID.randomUUID().toString();
@@ -40,11 +33,7 @@ public class Song implements Comparable<Song> {
 
     @Override
     public int compareTo(Song song) {
-        if (Integer.parseInt(this.trackNumber) < Integer.parseInt(song.trackNumber))
-            return -1;
-        if (Integer.parseInt(this.trackNumber) > Integer.parseInt(song.trackNumber))
-            return 1;
-        return 0;
+        return Integer.parseInt(this.trackNumber) - Integer.parseInt(song.trackNumber);
     }
 
 }

@@ -1,12 +1,16 @@
 package com.developer.drodriguez.model;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.List;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 @Document
 public class Artist {
 
@@ -14,14 +18,6 @@ public class Artist {
     private String id;
     private String name;
     private List<Album> albums;
-
-    public Artist() {}
-
-    public Artist(String id, String name, List<Album> albums) {
-        this.id = id;
-        this.name = name;
-        this.albums = albums;
-    }
 
     public Artist(String name, List<Album> albums) {
         this.name = name;

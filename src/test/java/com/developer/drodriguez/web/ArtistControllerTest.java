@@ -703,7 +703,7 @@ public class ArtistControllerTest {
     private Song cloneSong(Song song) {
         return new Song(song.getId(), song.getName(), song.getTrackNumber(), song.getYear(), song.getFileId(), song.getArtworkFileId());
     }
-    
+
     private String toJson(Object object) throws JsonProcessingException {
         return new ObjectMapper().writeValueAsString(object);
     }
