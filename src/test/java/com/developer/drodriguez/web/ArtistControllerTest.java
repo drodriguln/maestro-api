@@ -19,6 +19,7 @@ import org.mockito.Spy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.mongodb.gridfs.GridFsTemplate;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -48,15 +49,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ContextConfiguration(classes = {FongoConfiguration.class})
 public class ArtistControllerTest {
 
+    @Autowired private ArtistController artistController;
+    @Autowired private ArtistRepository artistRepository;
+    @Autowired private MaestroResponseManager maestroResponseManager;
     @Mock private GridFSDBFile gridFsDbFile;
     @Mock private GridFsTemplate gridFsTemplate;
     @Mock private ArtistRepository artistRepositoryMock;
+    @Mock private MaestroResponseManager maestroResponseManagerMock;
     @InjectMocks @Spy private ArtistController artistControllerSpy;
-    @Autowired private ArtistController artistController;
-    @Autowired private ArtistRepository artistRepository;
 
-    private static final MockMultipartFile ARTWORK_FILE_ONE = new MockMultipartFile("artwork", "artwork-file-one.png", "image/png", "Some image".getBytes());
-    private static final MockMultipartFile SONG_FILE_ONE = new MockMultipartFile("song", "song-file-one.mp3", "audio/mp3", "Some song".getBytes());
+    private static final byte[] SONG_FILE_BYTES = "Some image".getBytes();
+    private static final byte[] ARTWORK_FILE_BYTES = "Some image".getBytes();
+    private static final MockMultipartFile ARTWORK_FILE_ONE = new MockMultipartFile("artwork", "artwork-file-one.png", "image/png", SONG_FILE_BYTES);
+    private static final MockMultipartFile SONG_FILE_ONE = new MockMultipartFile("song", "song-file-one.mp3", "audio/mp3", ARTWORK_FILE_BYTES);
     private static final Song SONG_ONE = new Song(UUID.randomUUID().toString(), "SongOne", "1", "2018", UUID.randomUUID().toString(), UUID.randomUUID().toString());
     private static final Song SONG_TWO = new Song(UUID.randomUUID().toString(), "SongTwo", "2", "2018", UUID.randomUUID().toString(), UUID.randomUUID().toString());
     private static final Song SONG_THREE = new Song(UUID.randomUUID().toString(), "SongThree", "1", "2018", UUID.randomUUID().toString(), UUID.randomUUID().toString());
@@ -97,7 +102,7 @@ public class ArtistControllerTest {
     @Test
     public void getAllArtists() throws Exception {
         List<Artist> artists = new LinkedList<>(Arrays.asList(ARTIST_TWO, ARTIST_THREE, ARTIST_ONE, ARTIST_FOUR));
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetSuccessResponse(artists);
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createGetSuccessResponse(artists);
         mockMvc.perform(get(String.format("/%s", ARTISTS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -108,7 +113,7 @@ public class ArtistControllerTest {
     @Test
     public void getAllArtistsNoneExist() throws Exception {
         artistRepository.deleteAll();
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetFailureResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createGetFailureResponse();
         mockMvc.perform(get(String.format("/%s", ARTISTS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -118,7 +123,7 @@ public class ArtistControllerTest {
 
     @Test
     public void getArtist() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetSuccessResponse(ARTIST_ONE);
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createGetSuccessResponse(ARTIST_ONE);
         mockMvc.perform(get(String.format("/%s/%s", ARTISTS, ARTIST_ONE.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -128,7 +133,7 @@ public class ArtistControllerTest {
 
     @Test
     public void getArtistNoneExist() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetFailureResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createGetFailureResponse();
         mockMvc.perform(get(String.format("/%s/%s", ARTISTS, UNKNOWN_ID))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -138,7 +143,7 @@ public class ArtistControllerTest {
 
     @Test
     public void postArtist() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(ARTIST_ONE);
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createSaveSuccessResponse(ARTIST_ONE);
         mockMvc.perform(post(String.format("/%s", ARTISTS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(ARTIST_ONE)))
@@ -151,7 +156,7 @@ public class ArtistControllerTest {
     @Test
     public void putArtist() throws Exception {
         Artist artistToPut = cloneArtist(ARTIST_ONE);
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(artistToPut);
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createSaveSuccessResponse(artistToPut);
         artistToPut.setName("NewArtistOne");
         mockMvc.perform(put(String.format("/%s/%s", ARTISTS, ARTIST_ONE.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
@@ -167,7 +172,7 @@ public class ArtistControllerTest {
         Artist artistToPut = cloneArtist(ARTIST_FOUR);
         artistToPut.setName("NewArtistFour");
         artistToPut.setAlbums(null);
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(artistToPut);
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createSaveSuccessResponse(artistToPut);
         mockMvc.perform(put(String.format("/%s/%s", ARTISTS, ARTIST_FOUR.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(artistToPut)))
@@ -179,7 +184,7 @@ public class ArtistControllerTest {
 
     @Test
     public void deleteArtist() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createDeleteSuccessResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createDeleteSuccessResponse();
         mockMvc.perform(delete(String.format("/%s/%s", ARTISTS, ARTIST_TWO.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().json(toJson(response.getBody())))
@@ -191,7 +196,7 @@ public class ArtistControllerTest {
 
     @Test
     public void deleteArtistNoSongsExist() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createDeleteSuccessResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createDeleteSuccessResponse();
         mockMvc.perform(delete(String.format("/%s/%s", ARTISTS, ARTIST_THREE.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -204,7 +209,7 @@ public class ArtistControllerTest {
 
     @Test
     public void deleteArtistNoneExist() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createDeleteFailureResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createDeleteFailureResponse();
         mockMvc.perform(delete(String.format("/%s/%s", ARTISTS, UNKNOWN_ID))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -214,7 +219,7 @@ public class ArtistControllerTest {
 
     @Test
     public void getAllAlbums() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetSuccessResponse(ARTIST_ONE.getAlbums());
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createGetSuccessResponse(ARTIST_ONE.getAlbums());
         mockMvc.perform(get(String.format("/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -224,7 +229,7 @@ public class ArtistControllerTest {
 
     @Test
     public void getAllAlbumsNoArtistExists() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetFailureResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createGetFailureResponse();
         mockMvc.perform(get(String.format("/%s/%s/%s", ARTISTS, UNKNOWN_ID, ALBUMS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -234,7 +239,7 @@ public class ArtistControllerTest {
 
     @Test
     public void getAllAlbumsNoneExist() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetFailureResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createGetFailureResponse();
         mockMvc.perform(get(String.format("/%s/%s/%s", ARTISTS, ARTIST_FOUR.getId(), ALBUMS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -244,7 +249,7 @@ public class ArtistControllerTest {
 
     @Test
     public void getAlbum() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetSuccessResponse(ALBUM_TWO);
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createGetSuccessResponse(ALBUM_TWO);
         mockMvc.perform(get(String.format("/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_TWO.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -254,7 +259,7 @@ public class ArtistControllerTest {
 
     @Test
     public void getAlbumNoneExist() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetFailureResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createGetFailureResponse();
         mockMvc.perform(get(String.format("/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, UNKNOWN_ID))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -264,7 +269,7 @@ public class ArtistControllerTest {
 
     @Test
     public void postAlbum() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(ALBUM_FOUR);
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createSaveSuccessResponse(ALBUM_FOUR);
         mockMvc.perform(post(String.format("/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(ALBUM_FOUR)))
@@ -278,7 +283,7 @@ public class ArtistControllerTest {
 
     @Test
     public void postAlbumNoneExist() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(ALBUM_FOUR);
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createSaveSuccessResponse(ALBUM_FOUR);
         mockMvc.perform(post(String.format("/%s/%s/%s", ARTISTS, ARTIST_FOUR.getId(), ALBUMS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(ALBUM_FOUR)))
@@ -292,7 +297,7 @@ public class ArtistControllerTest {
 
     @Test
     public void postAlbumNoArtistExists() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveFailureResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createSaveFailureResponse();
         mockMvc.perform(post(String.format("/%s/%s/%s", ARTISTS, UNKNOWN_ID, ALBUMS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(ALBUM_FOUR)))
@@ -305,7 +310,7 @@ public class ArtistControllerTest {
     public void putAlbum() throws Exception {
         Album albumToPut = cloneAlbum(ALBUM_TWO);
         albumToPut.setName("NewAlbumTwo");
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(albumToPut);
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createSaveSuccessResponse(albumToPut);
         mockMvc.perform(put(String.format("/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_TWO.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(albumToPut)))
@@ -319,7 +324,7 @@ public class ArtistControllerTest {
     public void putAlbumNoArtistExists() throws Exception {
         Album albumToPut = cloneAlbum(ALBUM_TWO);
         albumToPut.setName("NewAlbumTwo");
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveFailureResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createSaveFailureResponse();
         mockMvc.perform(put(String.format("/%s/%s/%s/%s", ARTISTS, UNKNOWN_ID, ALBUMS, ALBUM_TWO.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(albumToPut)))
@@ -333,7 +338,7 @@ public class ArtistControllerTest {
     public void putAlbumNoSongsExist() throws Exception {
         Album albumToPut = cloneAlbum(ALBUM_FOUR);
         albumToPut.setName("NewAlbumTwo");
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(albumToPut);
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createSaveSuccessResponse(albumToPut);
         mockMvc.perform(put(String.format("/%s/%s/%s/%s", ARTISTS, ARTIST_THREE.getId(), ALBUMS, ALBUM_FOUR.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(albumToPut)))
@@ -345,7 +350,7 @@ public class ArtistControllerTest {
 
     @Test
     public void deleteAlbum() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createDeleteSuccessResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createDeleteSuccessResponse();
         mockMvc.perform(delete(String.format("/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_TWO.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -359,7 +364,7 @@ public class ArtistControllerTest {
 
     @Test
     public void deleteAlbumNoArtistExists() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createDeleteFailureResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createDeleteFailureResponse();
         mockMvc.perform(delete(String.format("/%s/%s/%s/%s", ARTISTS, UNKNOWN_ID, ALBUMS, ALBUM_TWO.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -369,7 +374,7 @@ public class ArtistControllerTest {
 
     @Test
     public void getAllSongs() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetSuccessResponse(ALBUM_ONE.getSongs());
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createGetSuccessResponse(ALBUM_ONE.getSongs());
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_ONE.getId(), SONGS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -380,7 +385,7 @@ public class ArtistControllerTest {
 
     @Test
     public void getAllSongsNoArtistExists() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetFailureResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createGetFailureResponse();
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s", ARTISTS, UNKNOWN_ID, ALBUMS, UNKNOWN_ID, SONGS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -390,7 +395,7 @@ public class ArtistControllerTest {
 
     @Test
     public void getAllSongsNoAlbumExists() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetFailureResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createGetFailureResponse();
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, UNKNOWN_ID, SONGS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -400,7 +405,7 @@ public class ArtistControllerTest {
 
     @Test
     public void getSong() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetSuccessResponse(SONG_TWO);
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createGetSuccessResponse(SONG_TWO);
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_ONE.getId(), SONGS, SONG_TWO.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -410,7 +415,7 @@ public class ArtistControllerTest {
 
     @Test
     public void getSongNoneExist() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetFailureResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createGetFailureResponse();
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_FOUR.getId(), ALBUMS, ALBUM_FOUR.getId(), SONGS, UNKNOWN_ID))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -420,7 +425,7 @@ public class ArtistControllerTest {
 
     @Test
     public void postSong() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(SONG_THREE);
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createSaveSuccessResponse(SONG_THREE);
         mockMvc.perform(fileUpload(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_TWO.getId(), SONGS))
                 .file(SONG_FILE_ONE)
                 .file(ARTWORK_FILE_ONE)
@@ -436,7 +441,7 @@ public class ArtistControllerTest {
 
     @Test
     public void postSongNoNameGiven() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(SONG_THREE);
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createSaveSuccessResponse(SONG_THREE);
         mockMvc.perform(fileUpload(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_TWO.getId(), SONGS))
                 .file(SONG_FILE_ONE)
                 .file(ARTWORK_FILE_ONE)
@@ -452,7 +457,7 @@ public class ArtistControllerTest {
 
     @Test
     public void postSongNoTrackNumberGiven() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(SONG_THREE);
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createSaveSuccessResponse(SONG_THREE);
         mockMvc.perform(fileUpload(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_TWO.getId(), SONGS))
                 .file(SONG_FILE_ONE)
                 .file(ARTWORK_FILE_ONE)
@@ -468,7 +473,7 @@ public class ArtistControllerTest {
 
     @Test
     public void postSongNoArtistExists() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveFailureResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createSaveFailureResponse();
         mockMvc.perform(fileUpload(String.format("/%s/%s/%s/%s/%s", ARTISTS, UNKNOWN_ID, ALBUMS, ALBUM_TWO.getId(), SONGS))
                 .file(SONG_FILE_ONE)
                 .file(ARTWORK_FILE_ONE)
@@ -483,7 +488,7 @@ public class ArtistControllerTest {
 
     @Test
     public void postSongNoAlbumExists() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveFailureResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createSaveFailureResponse();
         mockMvc.perform(fileUpload(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_FOUR.getId(), ALBUMS, UNKNOWN_ID, SONGS))
                 .file(SONG_FILE_ONE)
                 .file(ARTWORK_FILE_ONE)
@@ -501,7 +506,7 @@ public class ArtistControllerTest {
         Artist artistWithEmptyAlbumList = cloneArtist(ARTIST_FOUR);
         artistWithEmptyAlbumList.setAlbums(new ArrayList<>());
         artistRepository.save(artistWithEmptyAlbumList);
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveFailureResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createSaveFailureResponse();
         mockMvc.perform(fileUpload(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_FOUR.getId(), ALBUMS, ALBUM_FOUR.getId(), SONGS))
                 .file(SONG_FILE_ONE)
                 .file(ARTWORK_FILE_ONE)
@@ -516,7 +521,7 @@ public class ArtistControllerTest {
 
     @Test
     public void postSongNoneExist() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(SONG_FOUR);
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createSaveSuccessResponse(SONG_FOUR);
         mockMvc.perform(fileUpload(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_THREE.getId(), ALBUMS, ALBUM_FOUR.getId(), SONGS))
                 .file(SONG_FILE_ONE)
                 .file(ARTWORK_FILE_ONE)
@@ -534,7 +539,7 @@ public class ArtistControllerTest {
     public void putSong() throws Exception {
         Song songToPut = cloneSong(SONG_THREE);
         songToPut.setName("NewSongThree");
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(songToPut);
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createSaveSuccessResponse(songToPut);
         mockMvc.perform(put(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_TWO.getId(), SONGS, SONG_THREE.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(songToPut)))
@@ -548,7 +553,7 @@ public class ArtistControllerTest {
     public void putSongNoArtistExists() throws Exception {
         Song songToPut = cloneSong(SONG_THREE);
         songToPut.setName("NewSongThree");
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveFailureResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createSaveFailureResponse();
         mockMvc.perform(put(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, UNKNOWN_ID, ALBUMS, ALBUM_TWO.getId(), SONGS, SONG_THREE.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(songToPut)))
@@ -562,7 +567,7 @@ public class ArtistControllerTest {
     public void putSongNoAlbumExists() throws Exception {
         Song songToPut = cloneSong(SONG_FOUR);
         songToPut.setName("NewSongFour");
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveFailureResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createSaveFailureResponse();
         mockMvc.perform(put(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_THREE.getId(), ALBUMS, UNKNOWN_ID, SONGS, SONG_FOUR.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(songToPut)))
@@ -575,7 +580,7 @@ public class ArtistControllerTest {
     public void putSongNoFileId() throws Exception {
         Song songToPut = cloneSong(SONG_THREE);
         songToPut.setFileId(null);
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(SONG_THREE);
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createSaveSuccessResponse(SONG_THREE);
         mockMvc.perform(put(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_TWO.getId(), SONGS, SONG_THREE.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(songToPut)))
@@ -589,7 +594,7 @@ public class ArtistControllerTest {
     public void putSongNoArtworkFileId() throws Exception {
         Song songToPut = cloneSong(SONG_THREE);
         songToPut.setArtworkFileId(null);
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(SONG_THREE);
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createSaveSuccessResponse(SONG_THREE);
         mockMvc.perform(put(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_TWO.getId(), SONGS, SONG_THREE.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(songToPut)))
@@ -601,7 +606,7 @@ public class ArtistControllerTest {
 
     @Test
     public void deleteSong() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createDeleteSuccessResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createDeleteSuccessResponse();
         mockMvc.perform(delete(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_ONE.getId(), SONGS, SONG_ONE.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -620,7 +625,7 @@ public class ArtistControllerTest {
 
     @Test
     public void deleteSongOneRemaining() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createDeleteSuccessResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createDeleteSuccessResponse();
         mockMvc.perform(delete(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_TWO.getId(), SONGS, SONG_THREE.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -637,7 +642,7 @@ public class ArtistControllerTest {
 
     @Test
     public void deleteSongNoArtistExists() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createDeleteFailureResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createDeleteFailureResponse();
         mockMvc.perform(delete(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, UNKNOWN_ID, ALBUMS, ALBUM_ONE.getId(), SONGS, SONG_ONE.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -647,7 +652,7 @@ public class ArtistControllerTest {
 
     @Test
     public void deleteSongNoAlbumExists() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createDeleteFailureResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createDeleteFailureResponse();
         mockMvc.perform(delete(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_FOUR.getId(), ALBUMS, UNKNOWN_ID, SONGS, SONG_FOUR.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -657,7 +662,7 @@ public class ArtistControllerTest {
 
     @Test
     public void deleteSongNoneExist() throws Exception {
-        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createDeleteFailureResponse();
+        ResponseEntity<MaestroResponseBody> response = maestroResponseManager.createDeleteFailureResponse();
         mockMvc.perform(delete(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_THREE.getId(), ALBUMS, ALBUM_FOUR, SONGS, UNKNOWN_ID))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -706,6 +711,10 @@ public class ArtistControllerTest {
     @Test
     public void getSongFile() throws Exception {
         setupGridFsDbFileMock(FILE_ID, FILE_NAME, FILE_CONTENT_TYPE);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType(FILE_CONTENT_TYPE));
+        ResponseEntity<byte[]> response = maestroResponseManager.createGetFileSuccessResponse(headers, SONG_FILE_BYTES);
+        when(maestroResponseManagerMock.createGetFileSuccessResponse(anyObject(), anyObject())).thenReturn(response);
         when(artistRepositoryMock.findOne(anyString())).thenReturn(ARTIST_ONE);
         mockMvc = MockMvcBuilders.standaloneSetup(artistControllerSpy).build();
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_ONE.getId(), SONGS, SONG_ONE.getId(), FILE))
@@ -717,9 +726,10 @@ public class ArtistControllerTest {
     @Test
     public void getSongFileNull() throws Exception {
         setupGridFsDbFileMock(FILE_ID, FILE_NAME, FILE_CONTENT_TYPE);
+        ResponseEntity<byte[]> response = maestroResponseManager.createGetFileFailureResponse();
+        when(maestroResponseManagerMock.createGetFileFailureResponse()).thenReturn(response);
         when(artistRepositoryMock.findOne(anyString())).thenReturn(ARTIST_TWO);
         mockMvc = MockMvcBuilders.standaloneSetup(artistControllerSpy).build();
-        ResponseEntity<byte[]> response = MaestroResponseManager.createGetFileFailureResponse();
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_TWO.getId(), ALBUMS, ALBUM_TWO.getId(), SONGS, SONG_THREE.getId(), FILE))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().bytes(response.getBody()))
@@ -729,6 +739,10 @@ public class ArtistControllerTest {
     @Test
     public void getSongArtwork() throws Exception {
         setupGridFsDbFileMock(ARTWORK_ID, ARTWORK_NAME, ARTWORK_CONTENT_TYPE);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType(ARTWORK_CONTENT_TYPE));
+        ResponseEntity<byte[]> response = maestroResponseManager.createGetFileSuccessResponse(headers, ARTWORK_FILE_BYTES);
+        when(maestroResponseManagerMock.createGetFileSuccessResponse(anyObject(), anyObject())).thenReturn(response);
         when(artistRepositoryMock.findOne(anyString())).thenReturn(ARTIST_ONE);
         mockMvc = MockMvcBuilders.standaloneSetup(artistControllerSpy).build();
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_ONE.getId(), SONGS, SONG_ONE.getId(), ARTWORK))
@@ -740,9 +754,10 @@ public class ArtistControllerTest {
     @Test
     public void getSongArtworkNull() throws Exception {
         setupGridFsDbFileMock(ARTWORK_ID, ARTWORK_NAME, ARTWORK_CONTENT_TYPE);
+        ResponseEntity<byte[]> response = maestroResponseManager.createGetFileFailureResponse();
+        when(maestroResponseManagerMock.createGetFileFailureResponse()).thenReturn(response);
         when(artistRepositoryMock.findOne(anyString())).thenReturn(ARTIST_TWO);
         mockMvc = MockMvcBuilders.standaloneSetup(artistControllerSpy).build();
-        ResponseEntity<byte[]> response = MaestroResponseManager.createGetFileFailureResponse();
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_TWO.getId(), ALBUMS, ALBUM_TWO.getId(), SONGS, SONG_THREE.getId(), ARTWORK))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().bytes(response.getBody()))
@@ -752,25 +767,32 @@ public class ArtistControllerTest {
     @Test
     public void findFile() throws IOException {
         setupGridFsDbFileMock(FILE_ID, FILE_NAME, FILE_CONTENT_TYPE);
-        ResponseEntity<byte[]> response = artistControllerSpy.findFile(FILE_ID);
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertTrue(response.hasBody());
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType(FILE_CONTENT_TYPE));
+        ResponseEntity<byte[]> expectedResponse = maestroResponseManager.createGetFileSuccessResponse(headers, SONG_FILE_BYTES);
+        when(maestroResponseManagerMock.createGetFileSuccessResponse(anyObject(), anyObject())).thenReturn(expectedResponse);
+        ResponseEntity<byte[]> actualResponse = artistControllerSpy.findFile(FILE_ID);
+        assertEquals(expectedResponse.getStatusCode(), actualResponse.getStatusCode());
+        assertEquals(expectedResponse.getBody(), expectedResponse.getBody());
     }
 
     @Test
     public void findFileNull() throws IOException {
         when(gridFsTemplate.findOne(anyObject())).thenReturn(null);
-        ResponseEntity<byte[]> response = artistControllerSpy.findFile(FILE_ID);
-        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
-        assertEquals(0, response.getBody().length);
+        ResponseEntity<byte[]> expectedResponse = maestroResponseManager.createGetFileFailureResponse();
+        when(maestroResponseManagerMock.createGetFileFailureResponse()).thenReturn(expectedResponse);
+        ResponseEntity<byte[]> actualResponse = artistControllerSpy.findFile(FILE_ID);
+        assertEquals(expectedResponse.getStatusCode(), actualResponse.getStatusCode());
+        assertEquals(expectedResponse.getBody(), expectedResponse.getBody());
     }
 
     @Test
     public void deleteFile() {
-        ResponseEntity<MaestroResponseBody> expectedResponse = MaestroResponseManager.createDeleteSuccessResponse();
+        ResponseEntity<MaestroResponseBody> expectedResponse = maestroResponseManager.createDeleteSuccessResponse();
+        when(maestroResponseManagerMock.createDeleteSuccessResponse()).thenReturn(expectedResponse);
         ResponseEntity<MaestroResponseBody> actualResponse = artistControllerSpy.deleteFile(FILE_ID);
-        assertEquals(actualResponse.getBody().getMessage(), expectedResponse.getBody().getMessage());
-        assertEquals(actualResponse.getBody().getData(), expectedResponse.getBody().getData());
+        assertEquals(expectedResponse.getStatusCode(), actualResponse.getStatusCode());
+        assertEquals(actualResponse.getBody(), expectedResponse.getBody());
     }
 
     private Artist cloneArtist(Artist artist) {

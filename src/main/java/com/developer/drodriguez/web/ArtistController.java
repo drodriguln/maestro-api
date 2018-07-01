@@ -6,6 +6,7 @@ import com.developer.drodriguez.response.MaestroResponseBody;
 import com.developer.drodriguez.response.MaestroResponseManager;
 import com.mongodb.gridfs.GridFSDBFile;
 import com.mongodb.gridfs.GridFSFile;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -25,6 +26,7 @@ public class ArtistController {
 
     @Autowired private ArtistRepository artistRepository;
     @Autowired private GridFsTemplate gridFsTemplate;
+    @Autowired private MaestroResponseManager maestroResponseManager;
 
     /*
      *  Artists
@@ -34,22 +36,22 @@ public class ArtistController {
     public ResponseEntity<MaestroResponseBody> getAllArtists() {
         List<Artist> repoArtists = artistRepository.findAll(new Sort(Sort.Direction.DESC, "name"));
         return !repoArtists.isEmpty()
-            ? MaestroResponseManager.createGetSuccessResponse(repoArtists)
-            : MaestroResponseManager.createGetFailureResponse();
+            ? maestroResponseManager.createGetSuccessResponse(repoArtists)
+            : maestroResponseManager.createGetFailureResponse();
     }
 
     @GetMapping("/artists/{artistId}")
     public ResponseEntity<MaestroResponseBody> getArtist(@PathVariable String artistId) {
         Optional<Artist> repoArtistOptional = findArtist(artistId);
         return repoArtistOptional.isPresent()
-            ? MaestroResponseManager.createGetSuccessResponse(repoArtistOptional.get())
-            : MaestroResponseManager.createGetFailureResponse();
+            ? maestroResponseManager.createGetSuccessResponse(repoArtistOptional.get())
+            : maestroResponseManager.createGetFailureResponse();
     }
 
     @PostMapping("/artists")
     public ResponseEntity<MaestroResponseBody> postArtist(@RequestBody Artist artist) {
         Artist repoArtist = artistRepository.save(artist);
-        return MaestroResponseManager.createSaveSuccessResponse(repoArtist);
+        return maestroResponseManager.createSaveSuccessResponse(repoArtist);
     }
 
     @PutMapping("/artists/{artistId}")
@@ -61,14 +63,14 @@ public class ArtistController {
             artistRepository.delete(repoArtistOptional.get().getId());
         }
         Artist newArtist = artistRepository.save(new Artist(artistId, artist.getName(), artist.getAlbums()));
-        return MaestroResponseManager.createSaveSuccessResponse(newArtist);
+        return maestroResponseManager.createSaveSuccessResponse(newArtist);
     }
 
     @DeleteMapping("/artists/{artistId}")
     public ResponseEntity<MaestroResponseBody> deleteArtist(@PathVariable String artistId) {
         Optional<Artist> repoArtistOptional = findArtist(artistId);
         if (!repoArtistOptional.isPresent())
-            return MaestroResponseManager.createDeleteFailureResponse();
+            return maestroResponseManager.createDeleteFailureResponse();
         Optional<Album> repoAlbumOptional = repoArtistOptional.get().getAlbums().stream()
                 .filter(repoAlbum -> repoAlbum.getSongs() != null)
                 .findFirst();
@@ -79,7 +81,7 @@ public class ArtistController {
             }
         }
         artistRepository.delete(artistId);
-        return MaestroResponseManager.createDeleteSuccessResponse();
+        return maestroResponseManager.createDeleteSuccessResponse();
     }
 
     /*
@@ -92,37 +94,37 @@ public class ArtistController {
         if (repoArtistOptional.isPresent() && repoArtistOptional.get().getAlbums() != null) {
             List<Album> repoAlbums = repoArtistOptional.get().getAlbums();
             Collections.sort(repoAlbums);
-            return MaestroResponseManager.createGetSuccessResponse(repoAlbums);
+            return maestroResponseManager.createGetSuccessResponse(repoAlbums);
         }
-        return MaestroResponseManager.createGetFailureResponse();
+        return maestroResponseManager.createGetFailureResponse();
     }
 
     @GetMapping("/artists/{artistId}/albums/{albumId}")
     public ResponseEntity<MaestroResponseBody> getAlbum(@PathVariable String artistId, @PathVariable String albumId) {
         Optional<Album> repoAlbum = findAlbum(artistId, albumId);
         return repoAlbum.isPresent()
-                ? MaestroResponseManager.createGetSuccessResponse(repoAlbum.get())
-                : MaestroResponseManager.createGetFailureResponse();
+                ? maestroResponseManager.createGetSuccessResponse(repoAlbum.get())
+                : maestroResponseManager.createGetFailureResponse();
     }
 
     @PostMapping("/artists/{artistId}/albums")
     public ResponseEntity<MaestroResponseBody> postAlbum(@PathVariable String artistId, @RequestBody Album album) {
         Optional<Artist> repoArtistOptional = findArtist(artistId);
         if (!repoArtistOptional.isPresent())
-            return MaestroResponseManager.createSaveFailureResponse();
+            return maestroResponseManager.createSaveFailureResponse();
         if (repoArtistOptional.get().getAlbums() == null)
             repoArtistOptional.get().setAlbums(new ArrayList<>());
         Album newAlbum = new Album(UUID.randomUUID().toString(), album.getName(), album.getSongs());
         repoArtistOptional.get().getAlbums().add(newAlbum);
         artistRepository.save(repoArtistOptional.get());
-        return MaestroResponseManager.createSaveSuccessResponse(newAlbum);
+        return maestroResponseManager.createSaveSuccessResponse(newAlbum);
     }
 
     @PutMapping("/artists/{artistId}/albums/{albumId}")
     public ResponseEntity<MaestroResponseBody> putAlbum(@PathVariable String artistId, @PathVariable String albumId, @RequestBody Album album) {
         Optional<Artist> repoArtistOptional = findArtist(artistId);
         if (!repoArtistOptional.isPresent() || repoArtistOptional.get().getAlbums() == null)
-            return MaestroResponseManager.createSaveFailureResponse();
+            return maestroResponseManager.createSaveFailureResponse();
         Optional<Album> repoAlbumOptional = repoArtistOptional.get().getAlbums().stream()
                 .filter(repoAlbum -> albumId.equals(repoAlbum.getId()))
                 .findFirst();
@@ -132,14 +134,14 @@ public class ArtistController {
         Album albumToPut = new Album(albumId, album.getName(), album.getSongs());
         repoArtistOptional.get().getAlbums().add(albumToPut);
         artistRepository.save(repoArtistOptional.get());
-        return MaestroResponseManager.createSaveSuccessResponse(albumToPut);
+        return maestroResponseManager.createSaveSuccessResponse(albumToPut);
     }
 
     @DeleteMapping("/artists/{artistId}/albums/{albumId}")
     public ResponseEntity<MaestroResponseBody> deleteAlbum(@PathVariable String artistId, @PathVariable String albumId) throws IOException {
         Optional<Artist> repoArtistOptional = findArtist(artistId);
         if (!repoArtistOptional.isPresent() || repoArtistOptional.get().getAlbums() == null)
-            return MaestroResponseManager.createDeleteFailureResponse();
+            return maestroResponseManager.createDeleteFailureResponse();
         Optional<Album> repoAlbumOptional = repoArtistOptional.get().getAlbums().stream()
                 .filter(repoAlbum -> albumId.equals(repoAlbum.getId()))
                 .findFirst();
@@ -151,7 +153,7 @@ public class ArtistController {
             repoArtistOptional.get().getAlbums().remove(repoAlbumOptional.get());
         }
         artistRepository.save(repoArtistOptional.get());
-        return MaestroResponseManager.createDeleteSuccessResponse();
+        return maestroResponseManager.createDeleteSuccessResponse();
     }
 
     /*
@@ -164,17 +166,17 @@ public class ArtistController {
         if (repoAlbumOptional.isPresent() && repoAlbumOptional.get().getSongs() != null) {
             List<Song> repoSongs = repoAlbumOptional.get().getSongs();
             Collections.sort(repoSongs);
-            return MaestroResponseManager.createGetSuccessResponse(repoSongs);
+            return maestroResponseManager.createGetSuccessResponse(repoSongs);
         }
-        return MaestroResponseManager.createGetFailureResponse();
+        return maestroResponseManager.createGetFailureResponse();
     }
 
     @GetMapping("/artists/{artistId}/albums/{albumId}/songs/{songId}")
     public ResponseEntity<MaestroResponseBody> getSong(@PathVariable String artistId, @PathVariable String albumId, @PathVariable String songId) {
         Optional<Song> repoSongOptional = findSong(artistId, albumId, songId);
         return repoSongOptional.isPresent()
-                ? MaestroResponseManager.createGetSuccessResponse(repoSongOptional.get())
-                : MaestroResponseManager.createGetFailureResponse();
+                ? maestroResponseManager.createGetSuccessResponse(repoSongOptional.get())
+                : maestroResponseManager.createGetFailureResponse();
     }
 
     @PostMapping("/artists/{artistId}/albums/{albumId}/songs")
@@ -192,19 +194,19 @@ public class ArtistController {
         Song newSong = new Song(songName, trackNumber, year, songFile.getId().toString(), artworkFile.getId().toString());
         Optional<Artist> repoArtistOptional = findArtist(artistId);
         if (!repoArtistOptional.isPresent() || repoArtistOptional.get().getAlbums() == null)
-            return MaestroResponseManager.createSaveFailureResponse();
+            return maestroResponseManager.createSaveFailureResponse();
         Optional<Album> repoAlbumOptional = repoArtistOptional.get().getAlbums().stream()
                 .filter(repoAlbum -> albumId.equals(repoAlbum.getId()))
                 .findFirst();
         if (!repoAlbumOptional.isPresent())
-            return MaestroResponseManager.createSaveFailureResponse();
+            return maestroResponseManager.createSaveFailureResponse();
         if (repoAlbumOptional.get().getSongs() == null)
             repoAlbumOptional.get().setSongs(new ArrayList<>());
         List<Song> repoSongs = repoAlbumOptional.get().getSongs();
         repoSongs.add(newSong);
         repoAlbumOptional.get().setSongs(repoSongs);
         artistRepository.save(repoArtistOptional.get());
-        return MaestroResponseManager.createSaveSuccessResponse(repoSongs);
+        return maestroResponseManager.createSaveSuccessResponse(repoSongs);
     }
 
     @PutMapping("/artists/{artistId}/albums/{albumId}/songs/{songId}")
@@ -212,12 +214,12 @@ public class ArtistController {
                         @RequestBody Song song) {
         Optional<Artist> repoArtistOptional = findArtist(artistId);
         if (!repoArtistOptional.isPresent() || repoArtistOptional.get().getAlbums() == null)
-            return MaestroResponseManager.createSaveFailureResponse();
+            return maestroResponseManager.createSaveFailureResponse();
         Optional<Album> repoAlbumOptional = repoArtistOptional.get().getAlbums().stream()
                 .filter(repoAlbum -> albumId.equals(repoAlbum.getId()))
                 .findFirst();
         if (!repoAlbumOptional.isPresent() || repoAlbumOptional.get().getSongs() == null)
-            return MaestroResponseManager.createSaveFailureResponse();
+            return maestroResponseManager.createSaveFailureResponse();
         Optional<Song> repoSongOptional = repoAlbumOptional.get().getSongs().stream()
                 .filter(repoSong -> songId.equals(repoSong.getId()))
                 .findFirst();
@@ -231,19 +233,19 @@ public class ArtistController {
             repoAlbumOptional.get().setSongs(repoSongs);
         }
         artistRepository.save(repoArtistOptional.get());
-        return MaestroResponseManager.createSaveSuccessResponse(song);
+        return maestroResponseManager.createSaveSuccessResponse(song);
     }
 
     @DeleteMapping("/artists/{artistId}/albums/{albumId}/songs/{songId}")
     public ResponseEntity<MaestroResponseBody> deleteSong(@PathVariable String artistId, @PathVariable String albumId, @PathVariable String songId) throws IOException {
         Optional<Artist> repoArtistOptional = findArtist(artistId);
         if (!repoArtistOptional.isPresent() || repoArtistOptional.get().getAlbums() == null)
-            return MaestroResponseManager.createDeleteFailureResponse();
+            return maestroResponseManager.createDeleteFailureResponse();
         Optional<Album> repoAlbumOptional = repoArtistOptional.get().getAlbums().stream()
                 .filter(repoAlbum -> albumId.equals(repoAlbum.getId()))
                 .findFirst();
         if (!repoAlbumOptional.isPresent() || repoAlbumOptional.get().getSongs() == null)
-            return MaestroResponseManager.createDeleteFailureResponse();
+            return maestroResponseManager.createDeleteFailureResponse();
         Optional<Song> repoSongOptional = repoAlbumOptional.get().getSongs().stream()
                     .filter(repoSong -> songId.equals(repoSong.getId()))
                     .findFirst();
@@ -255,7 +257,7 @@ public class ArtistController {
             repoAlbumOptional.get().setSongs(repoSongs);
         }
         artistRepository.save(repoArtistOptional.get());
-        return MaestroResponseManager.createDeleteSuccessResponse();
+        return maestroResponseManager.createDeleteSuccessResponse();
     }
 
     @GetMapping(value = "/artists/{artistId}/albums/{albumId}/songs/{songId}/file")
@@ -263,7 +265,7 @@ public class ArtistController {
         Optional<Song> repoSong = findSong(artistId, albumId, songId);
         return repoSong.isPresent()
                 ? findFile(repoSong.get().getFileId())
-                : MaestroResponseManager.createGetFileFailureResponse();
+                : maestroResponseManager.createGetFileFailureResponse();
     }
 
     @GetMapping(value = "/artists/{artistId}/albums/{albumId}/songs/{songId}/artwork")
@@ -271,24 +273,24 @@ public class ArtistController {
         Optional<Song> repoSong = findSong(artistId, albumId, songId);
         return repoSong.isPresent()
                 ? findFile(repoSong.get().getArtworkFileId())
-                : MaestroResponseManager.createGetFileFailureResponse();
+                : maestroResponseManager.createGetFileFailureResponse();
     }
 
     ResponseEntity<byte[]> findFile(String fileId) throws IOException {
         GridFSDBFile gridFSDBFile = gridFsTemplate.findOne(new Query(Criteria.where("_id").is(fileId)));
         if (gridFSDBFile == null)
-            return MaestroResponseManager.createGetFileFailureResponse();
+            return maestroResponseManager.createGetFileFailureResponse();
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         gridFSDBFile.writeTo(outputStream);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType(gridFSDBFile.getContentType()));
         byte[] bytes = outputStream.toByteArray();
-        return MaestroResponseManager.createGetFileSuccessResponse(headers, bytes);
+        return maestroResponseManager.createGetFileSuccessResponse(headers, bytes);
     }
 
     ResponseEntity<MaestroResponseBody> deleteFile(String fileId) {
         gridFsTemplate.delete(new Query(Criteria.where("_id").is(fileId)));
-        return MaestroResponseManager.createDeleteSuccessResponse();
+        return maestroResponseManager.createDeleteSuccessResponse();
     }
 
     Optional<Artist> findArtist(String artistId) {
