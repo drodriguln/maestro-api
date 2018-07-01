@@ -62,4 +62,8 @@ public class MaestroResponseManager {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new byte[0]);
     }
 
+    public ResponseEntity<MaestroResponseBody> createExceptionResponse(String message) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new MaestroResponseBody(message));
+    }
+
 }
