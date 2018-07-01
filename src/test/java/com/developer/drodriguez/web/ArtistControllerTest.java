@@ -2,10 +2,11 @@ package com.developer.drodriguez.web;
 
 import com.developer.drodriguez.config.FongoConfiguration;
 import com.developer.drodriguez.domain.ArtistRepository;
-import com.developer.drodriguez.model.AjaxResponseBody;
 import com.developer.drodriguez.model.Album;
 import com.developer.drodriguez.model.Artist;
+import com.developer.drodriguez.response.MaestroResponseBody;
 import com.developer.drodriguez.model.Song;
+import com.developer.drodriguez.response.MaestroResponseManager;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.gridfs.GridFSDBFile;
@@ -20,6 +21,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.mongodb.gridfs.GridFsTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
@@ -38,9 +40,7 @@ import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @ActiveProfiles("fongo")
 @SpringBootTest
@@ -77,17 +77,12 @@ public class ArtistControllerTest {
     private static final String ARTWORK_ID = SONG_ONE.getFileId();
     private static final String ARTWORK_NAME = "test.png";
     private static final String ARTWORK_CONTENT_TYPE = "image/png";
-    private static final byte[] EMPTY_CONTENT = new byte[0];
     private static final String SONGS = "songs";
     private static final String ALBUMS = "albums";
     private static final String ARTISTS = "artists";
     private static final String FILE = "file";
     private static final String ARTWORK = "artwork";
     private static final String UNKNOWN_ID = "unknownId";
-    private static final String RESPONSE_ENTITY_SAVE_SUCCESSFUL = "Object saved successfully.";
-    private static final String RESPONSE_ENTITY_SAVE_UNSUCCESSFUL = "Could not successfully save the object.";
-    private static final String RESPONSE_ENTITY_DELETE_SUCCESSFUL = "Object deleted successfully.";
-    private static final String RESPONSE_ENTITY_DELETE_UNSUCCESSFUL = "Could not successfully delete the object.";
     private MockMvc mockMvc;
 
     @Before
@@ -102,45 +97,53 @@ public class ArtistControllerTest {
     @Test
     public void getAllArtists() throws Exception {
         List<Artist> artists = new LinkedList<>(Arrays.asList(ARTIST_TWO, ARTIST_THREE, ARTIST_ONE, ARTIST_FOUR));
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetSuccessResponse(artists);
         mockMvc.perform(get(String.format("/%s", ARTISTS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(toJson(artists)))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isOk());
     }
 
     @Test
     public void getAllArtistsNoneExist() throws Exception {
         artistRepository.deleteAll();
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetFailureResponse();
         mockMvc.perform(get(String.format("/%s", ARTISTS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(toJson(Collections.EMPTY_LIST)))
-                .andExpect(status().isOk());
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(status().isNotFound());
     }
 
     @Test
     public void getArtist() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetSuccessResponse(ARTIST_ONE);
         mockMvc.perform(get(String.format("/%s/%s", ARTISTS, ARTIST_ONE.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(toJson(ARTIST_ONE)))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isOk());
     }
 
     @Test
     public void getArtistNoneExist() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetFailureResponse();
         mockMvc.perform(get(String.format("/%s/%s", ARTISTS, UNKNOWN_ID))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().bytes(EMPTY_CONTENT))
-                .andExpect(status().isOk());
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(status().isNotFound());
     }
 
     @Test
     public void postArtist() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(ARTIST_ONE);
         mockMvc.perform(post(String.format("/%s", ARTISTS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(ARTIST_ONE)))
-                .andExpect(content().string(toJson(new AjaxResponseBody(RESPONSE_ENTITY_SAVE_SUCCESSFUL, ARTIST_ONE))))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isCreated());
         assertEquals(ARTIST_ONE, artistRepository.findOne(ARTIST_ONE.getId()));
     }
@@ -148,11 +151,13 @@ public class ArtistControllerTest {
     @Test
     public void putArtist() throws Exception {
         Artist artistToPut = cloneArtist(ARTIST_ONE);
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(artistToPut);
         artistToPut.setName("NewArtistOne");
         mockMvc.perform(put(String.format("/%s/%s", ARTISTS, ARTIST_ONE.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(artistToPut)))
-                .andExpect(content().string(toJson(new AjaxResponseBody(RESPONSE_ENTITY_SAVE_SUCCESSFUL, artistToPut))))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isCreated());
         assertNotEquals(ARTIST_ONE, artistRepository.findOne(ARTIST_ONE.getId()));
     }
@@ -162,19 +167,22 @@ public class ArtistControllerTest {
         Artist artistToPut = cloneArtist(ARTIST_FOUR);
         artistToPut.setName("NewArtistFour");
         artistToPut.setAlbums(null);
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(artistToPut);
         mockMvc.perform(put(String.format("/%s/%s", ARTISTS, ARTIST_FOUR.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(artistToPut)))
-                .andExpect(content().string(toJson(new AjaxResponseBody(RESPONSE_ENTITY_SAVE_SUCCESSFUL, artistToPut))))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isCreated());
         assertNotEquals(ARTIST_FOUR, artistRepository.findOne(ARTIST_FOUR.getId()));
     }
 
     @Test
     public void deleteArtist() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createDeleteSuccessResponse();
         mockMvc.perform(delete(String.format("/%s/%s", ARTISTS, ARTIST_TWO.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(RESPONSE_ENTITY_DELETE_SUCCESSFUL))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isOk());
         List<Artist> artistsAfterDelete = artistRepository.findAll();
         assertEquals(3, artistsAfterDelete.size());
@@ -183,9 +191,11 @@ public class ArtistControllerTest {
 
     @Test
     public void deleteArtistNoSongsExist() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createDeleteSuccessResponse();
         mockMvc.perform(delete(String.format("/%s/%s", ARTISTS, ARTIST_THREE.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(RESPONSE_ENTITY_DELETE_SUCCESSFUL))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isOk());
         List<Artist> artistsAfterDelete = artistRepository.findAll();
         assertEquals(3, artistsAfterDelete.size());
@@ -194,59 +204,72 @@ public class ArtistControllerTest {
 
     @Test
     public void deleteArtistNoneExist() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createDeleteFailureResponse();
         mockMvc.perform(delete(String.format("/%s/%s", ARTISTS, UNKNOWN_ID))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(RESPONSE_ENTITY_DELETE_UNSUCCESSFUL))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isUnprocessableEntity());
     }
 
     @Test
     public void getAllAlbums() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetSuccessResponse(ARTIST_ONE.getAlbums());
         mockMvc.perform(get(String.format("/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(toJson(ARTIST_ONE.getAlbums())))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isOk());
     }
 
     @Test
     public void getAllAlbumsNoArtistExists() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetFailureResponse();
         mockMvc.perform(get(String.format("/%s/%s/%s", ARTISTS, UNKNOWN_ID, ALBUMS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().bytes(EMPTY_CONTENT))
-                .andExpect(status().isOk());
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(status().isNotFound());
     }
 
     @Test
     public void getAllAlbumsNoneExist() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetFailureResponse();
         mockMvc.perform(get(String.format("/%s/%s/%s", ARTISTS, ARTIST_FOUR.getId(), ALBUMS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().bytes(EMPTY_CONTENT))
-                .andExpect(status().isOk());
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(status().isNotFound());
     }
 
     @Test
     public void getAlbum() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetSuccessResponse(ALBUM_TWO);
         mockMvc.perform(get(String.format("/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_TWO.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(toJson(ALBUM_TWO)))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isOk());
     }
 
     @Test
     public void getAlbumNoneExist() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetFailureResponse();
         mockMvc.perform(get(String.format("/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, UNKNOWN_ID))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().bytes(EMPTY_CONTENT))
-                .andExpect(status().isOk());
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(status().isNotFound());
     }
 
     @Test
     public void postAlbum() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(ALBUM_FOUR);
         mockMvc.perform(post(String.format("/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(ALBUM_FOUR)))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(jsonPath("$.message").value(response.getBody().getMessage()))
                 .andExpect(content().string(containsString("\"name\":\"AlbumFour\"")))
                 .andExpect(status().isCreated());
         assertEquals(3, artistRepository.findOne(ARTIST_ONE.getId()).getAlbums().size());
@@ -255,9 +278,12 @@ public class ArtistControllerTest {
 
     @Test
     public void postAlbumNoneExist() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(ALBUM_FOUR);
         mockMvc.perform(post(String.format("/%s/%s/%s", ARTISTS, ARTIST_FOUR.getId(), ALBUMS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(ALBUM_FOUR)))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(jsonPath("$.message").value(response.getBody().getMessage()))
                 .andExpect(content().string(containsString("\"name\":\"AlbumFour\"")))
                 .andExpect(status().isCreated());
         assertEquals(1, artistRepository.findOne(ARTIST_FOUR.getId()).getAlbums().size());
@@ -266,11 +292,12 @@ public class ArtistControllerTest {
 
     @Test
     public void postAlbumNoArtistExists() throws Exception {
-        AjaxResponseBody ajaxResponseBody = new AjaxResponseBody(RESPONSE_ENTITY_SAVE_UNSUCCESSFUL);
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveFailureResponse();
         mockMvc.perform(post(String.format("/%s/%s/%s", ARTISTS, UNKNOWN_ID, ALBUMS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(ALBUM_FOUR)))
-                .andExpect(content().string(toJson(ajaxResponseBody)))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isUnprocessableEntity());
     }
 
@@ -278,11 +305,12 @@ public class ArtistControllerTest {
     public void putAlbum() throws Exception {
         Album albumToPut = cloneAlbum(ALBUM_TWO);
         albumToPut.setName("NewAlbumTwo");
-        AjaxResponseBody ajaxResponseBody = new AjaxResponseBody(RESPONSE_ENTITY_SAVE_SUCCESSFUL, albumToPut);
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(albumToPut);
         mockMvc.perform(put(String.format("/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_TWO.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(albumToPut)))
-                .andExpect(content().string(toJson(ajaxResponseBody)))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isCreated());
         assertNotEquals(ARTIST_ONE, artistRepository.findOne(ARTIST_ONE.getId()));
     }
@@ -291,11 +319,12 @@ public class ArtistControllerTest {
     public void putAlbumNoArtistExists() throws Exception {
         Album albumToPut = cloneAlbum(ALBUM_TWO);
         albumToPut.setName("NewAlbumTwo");
-        AjaxResponseBody ajaxResponseBody = new AjaxResponseBody(RESPONSE_ENTITY_SAVE_UNSUCCESSFUL);
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveFailureResponse();
         mockMvc.perform(put(String.format("/%s/%s/%s/%s", ARTISTS, UNKNOWN_ID, ALBUMS, ALBUM_TWO.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(albumToPut)))
-                .andExpect(content().string(toJson(ajaxResponseBody)))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isUnprocessableEntity());
         assertEquals(ARTIST_ONE, artistRepository.findOne(ARTIST_ONE.getId()));
     }
@@ -304,20 +333,23 @@ public class ArtistControllerTest {
     public void putAlbumNoSongsExist() throws Exception {
         Album albumToPut = cloneAlbum(ALBUM_FOUR);
         albumToPut.setName("NewAlbumTwo");
-        AjaxResponseBody ajaxResponseBody = new AjaxResponseBody(RESPONSE_ENTITY_SAVE_SUCCESSFUL, albumToPut);
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(albumToPut);
         mockMvc.perform(put(String.format("/%s/%s/%s/%s", ARTISTS, ARTIST_THREE.getId(), ALBUMS, ALBUM_FOUR.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(albumToPut)))
-                .andExpect(content().string(toJson(ajaxResponseBody)))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isCreated());
         assertNotEquals(ARTIST_THREE, artistRepository.findOne(ARTIST_THREE.getId()));
     }
 
     @Test
     public void deleteAlbum() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createDeleteSuccessResponse();
         mockMvc.perform(delete(String.format("/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_TWO.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(RESPONSE_ENTITY_DELETE_SUCCESSFUL))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isOk());
         Artist artistAfterDelete = artistRepository.findOne(ARTIST_ONE.getId());
         List<Album> albumsAfterDelete = artistAfterDelete.getAlbums();
@@ -327,56 +359,68 @@ public class ArtistControllerTest {
 
     @Test
     public void deleteAlbumNoArtistExists() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createDeleteFailureResponse();
         mockMvc.perform(delete(String.format("/%s/%s/%s/%s", ARTISTS, UNKNOWN_ID, ALBUMS, ALBUM_TWO.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(RESPONSE_ENTITY_DELETE_UNSUCCESSFUL))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isUnprocessableEntity());
     }
 
     @Test
     public void getAllSongs() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetSuccessResponse(ALBUM_ONE.getSongs());
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_ONE.getId(), SONGS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(toJson(ALBUM_ONE.getSongs())))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isOk());
     }
 
     @Test
     public void getAllSongsNoArtistExists() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetFailureResponse();
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s", ARTISTS, UNKNOWN_ID, ALBUMS, UNKNOWN_ID, SONGS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().bytes(EMPTY_CONTENT))
-                .andExpect(status().isOk());
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(status().isNotFound());
     }
 
     @Test
     public void getAllSongsNoAlbumExists() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetFailureResponse();
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, UNKNOWN_ID, SONGS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().bytes(EMPTY_CONTENT))
-                .andExpect(status().isOk());
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(status().isNotFound());
     }
 
     @Test
     public void getSong() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetSuccessResponse(SONG_TWO);
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_ONE.getId(), SONGS, SONG_TWO.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(toJson(SONG_TWO)))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isOk());
     }
 
     @Test
     public void getSongNoneExist() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createGetFailureResponse();
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_FOUR.getId(), ALBUMS, ALBUM_FOUR.getId(), SONGS, UNKNOWN_ID))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().bytes(EMPTY_CONTENT))
-                .andExpect(status().isOk());
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(status().isNotFound());
     }
 
     @Test
     public void postSong() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(SONG_THREE);
         mockMvc.perform(fileUpload(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_TWO.getId(), SONGS))
                 .file(SONG_FILE_ONE)
                 .file(ARTWORK_FILE_ONE)
@@ -384,12 +428,15 @@ public class ArtistControllerTest {
                 .param("trackNumber", SONG_THREE.getTrackNumber())
                 .param("year", SONG_THREE.getYear())
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(jsonPath("$.message").value(response.getBody().getMessage()))
                 .andExpect(content().string(containsString("\"name\":\"SongThree\"")))
                 .andExpect(status().isCreated());
     }
 
     @Test
     public void postSongNoNameGiven() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(SONG_THREE);
         mockMvc.perform(fileUpload(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_TWO.getId(), SONGS))
                 .file(SONG_FILE_ONE)
                 .file(ARTWORK_FILE_ONE)
@@ -397,12 +444,15 @@ public class ArtistControllerTest {
                 .param("trackNumber", SONG_THREE.getTrackNumber())
                 .param("year", SONG_THREE.getYear())
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(jsonPath("$.message").value(response.getBody().getMessage()))
                 .andExpect(content().string(containsString("\"name\":\"song-file-one\"")))
                 .andExpect(status().isCreated());
     }
 
     @Test
     public void postSongNoTrackNumberGiven() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(SONG_THREE);
         mockMvc.perform(fileUpload(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_TWO.getId(), SONGS))
                 .file(SONG_FILE_ONE)
                 .file(ARTWORK_FILE_ONE)
@@ -410,13 +460,15 @@ public class ArtistControllerTest {
                 .param("trackNumber", "")
                 .param("year", SONG_THREE.getYear())
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(jsonPath("$.message").value(response.getBody().getMessage()))
                 .andExpect(content().string(containsString("\"trackNumber\":\"0\"")))
                 .andExpect(status().isCreated());
     }
 
     @Test
     public void postSongNoArtistExists() throws Exception {
-        AjaxResponseBody ajaxResponseBody = new AjaxResponseBody(RESPONSE_ENTITY_SAVE_UNSUCCESSFUL);
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveFailureResponse();
         mockMvc.perform(fileUpload(String.format("/%s/%s/%s/%s/%s", ARTISTS, UNKNOWN_ID, ALBUMS, ALBUM_TWO.getId(), SONGS))
                 .file(SONG_FILE_ONE)
                 .file(ARTWORK_FILE_ONE)
@@ -424,13 +476,14 @@ public class ArtistControllerTest {
                 .param("trackNumber", SONG_THREE.getTrackNumber())
                 .param("year", SONG_THREE.getYear())
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(toJson(ajaxResponseBody)))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isUnprocessableEntity());
     }
 
     @Test
     public void postSongNoAlbumExists() throws Exception {
-        AjaxResponseBody ajaxResponseBody = new AjaxResponseBody(RESPONSE_ENTITY_SAVE_UNSUCCESSFUL);
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveFailureResponse();
         mockMvc.perform(fileUpload(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_FOUR.getId(), ALBUMS, UNKNOWN_ID, SONGS))
                 .file(SONG_FILE_ONE)
                 .file(ARTWORK_FILE_ONE)
@@ -438,7 +491,8 @@ public class ArtistControllerTest {
                 .param("trackNumber", SONG_FOUR.getTrackNumber())
                 .param("year", SONG_FOUR.getYear())
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(toJson(ajaxResponseBody)))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isUnprocessableEntity());
     }
 
@@ -447,6 +501,7 @@ public class ArtistControllerTest {
         Artist artistWithEmptyAlbumList = cloneArtist(ARTIST_FOUR);
         artistWithEmptyAlbumList.setAlbums(new ArrayList<>());
         artistRepository.save(artistWithEmptyAlbumList);
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveFailureResponse();
         mockMvc.perform(fileUpload(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_FOUR.getId(), ALBUMS, ALBUM_FOUR.getId(), SONGS))
                 .file(SONG_FILE_ONE)
                 .file(ARTWORK_FILE_ONE)
@@ -454,12 +509,14 @@ public class ArtistControllerTest {
                 .param("trackNumber", SONG_FOUR.getTrackNumber())
                 .param("year", SONG_FOUR.getYear())
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(toJson(new AjaxResponseBody(RESPONSE_ENTITY_SAVE_UNSUCCESSFUL))))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().string(toJson(response.getBody())))
                 .andExpect(status().isUnprocessableEntity());
     }
 
     @Test
     public void postSongNoneExist() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(SONG_FOUR);
         mockMvc.perform(fileUpload(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_THREE.getId(), ALBUMS, ALBUM_FOUR.getId(), SONGS))
                 .file(SONG_FILE_ONE)
                 .file(ARTWORK_FILE_ONE)
@@ -467,6 +524,8 @@ public class ArtistControllerTest {
                 .param("trackNumber", SONG_FOUR.getTrackNumber())
                 .param("year", SONG_FOUR.getYear())
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(jsonPath("$.message").value(response.getBody().getMessage()))
                 .andExpect(content().string(containsString("\"name\":\"SongFour\"")))
                 .andExpect(status().isCreated());
     }
@@ -475,11 +534,12 @@ public class ArtistControllerTest {
     public void putSong() throws Exception {
         Song songToPut = cloneSong(SONG_THREE);
         songToPut.setName("NewSongThree");
-        AjaxResponseBody ajaxResponseBody = new AjaxResponseBody(RESPONSE_ENTITY_SAVE_SUCCESSFUL, songToPut);
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(songToPut);
         mockMvc.perform(put(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_TWO.getId(), SONGS, SONG_THREE.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(songToPut)))
-                .andExpect(content().string(toJson(ajaxResponseBody)))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isCreated());
         assertNotEquals(ARTIST_ONE, artistRepository.findOne(ARTIST_ONE.getId()));
     }
@@ -488,11 +548,12 @@ public class ArtistControllerTest {
     public void putSongNoArtistExists() throws Exception {
         Song songToPut = cloneSong(SONG_THREE);
         songToPut.setName("NewSongThree");
-        AjaxResponseBody ajaxResponseBody = new AjaxResponseBody(RESPONSE_ENTITY_SAVE_UNSUCCESSFUL);
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveFailureResponse();
         mockMvc.perform(put(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, UNKNOWN_ID, ALBUMS, ALBUM_TWO.getId(), SONGS, SONG_THREE.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(songToPut)))
-                .andExpect(content().string(toJson(ajaxResponseBody)))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isUnprocessableEntity());
         assertEquals(ARTIST_ONE, artistRepository.findOne(ARTIST_ONE.getId()));
     }
@@ -501,11 +562,11 @@ public class ArtistControllerTest {
     public void putSongNoAlbumExists() throws Exception {
         Song songToPut = cloneSong(SONG_FOUR);
         songToPut.setName("NewSongFour");
-        AjaxResponseBody ajaxResponseBody = new AjaxResponseBody(RESPONSE_ENTITY_SAVE_UNSUCCESSFUL);
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveFailureResponse();
         mockMvc.perform(put(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_THREE.getId(), ALBUMS, UNKNOWN_ID, SONGS, SONG_FOUR.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(songToPut)))
-                .andExpect(content().string(toJson(ajaxResponseBody)))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isUnprocessableEntity());
         assertEquals(ARTIST_THREE, artistRepository.findOne(ARTIST_THREE.getId()));
     }
@@ -514,10 +575,12 @@ public class ArtistControllerTest {
     public void putSongNoFileId() throws Exception {
         Song songToPut = cloneSong(SONG_THREE);
         songToPut.setFileId(null);
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(SONG_THREE);
         mockMvc.perform(put(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_TWO.getId(), SONGS, SONG_THREE.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(songToPut)))
-                .andExpect(content().string(toJson(new AjaxResponseBody(RESPONSE_ENTITY_SAVE_SUCCESSFUL, SONG_THREE))))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isCreated());
         assertNotEquals(songToPut, artistRepository.findOne(ARTIST_ONE.getId()));
     }
@@ -526,19 +589,23 @@ public class ArtistControllerTest {
     public void putSongNoArtworkFileId() throws Exception {
         Song songToPut = cloneSong(SONG_THREE);
         songToPut.setArtworkFileId(null);
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createSaveSuccessResponse(SONG_THREE);
         mockMvc.perform(put(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_TWO.getId(), SONGS, SONG_THREE.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(songToPut)))
-                .andExpect(content().string(toJson(new AjaxResponseBody(RESPONSE_ENTITY_SAVE_SUCCESSFUL, SONG_THREE))))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isCreated());
         assertNotEquals(songToPut, artistRepository.findOne(ARTIST_ONE.getId()));
     }
 
     @Test
     public void deleteSong() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createDeleteSuccessResponse();
         mockMvc.perform(delete(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_ONE.getId(), SONGS, SONG_ONE.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(RESPONSE_ENTITY_DELETE_SUCCESSFUL))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isOk());
         Artist artistAfterDelete = artistRepository.findOne(ARTIST_ONE.getId());
         Album albumAfterDelete = artistAfterDelete.getAlbums().stream()
@@ -553,9 +620,11 @@ public class ArtistControllerTest {
 
     @Test
     public void deleteSongOneRemaining() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createDeleteSuccessResponse();
         mockMvc.perform(delete(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_TWO.getId(), SONGS, SONG_THREE.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(RESPONSE_ENTITY_DELETE_SUCCESSFUL))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isOk());
         Artist artistAfterDelete = artistRepository.findOne(ARTIST_ONE.getId());
         Album albumAfterDelete = artistAfterDelete.getAlbums().stream()
@@ -568,25 +637,31 @@ public class ArtistControllerTest {
 
     @Test
     public void deleteSongNoArtistExists() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createDeleteFailureResponse();
         mockMvc.perform(delete(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, UNKNOWN_ID, ALBUMS, ALBUM_ONE.getId(), SONGS, SONG_ONE.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(RESPONSE_ENTITY_DELETE_UNSUCCESSFUL))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isUnprocessableEntity());
     }
 
     @Test
     public void deleteSongNoAlbumExists() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createDeleteFailureResponse();
         mockMvc.perform(delete(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_FOUR.getId(), ALBUMS, UNKNOWN_ID, SONGS, SONG_FOUR.getId()))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(RESPONSE_ENTITY_DELETE_UNSUCCESSFUL))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isUnprocessableEntity());
     }
 
     @Test
     public void deleteSongNoneExist() throws Exception {
+        ResponseEntity<MaestroResponseBody> response = MaestroResponseManager.createDeleteFailureResponse();
         mockMvc.perform(delete(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_THREE.getId(), ALBUMS, ALBUM_FOUR, SONGS, UNKNOWN_ID))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(RESPONSE_ENTITY_DELETE_UNSUCCESSFUL))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isUnprocessableEntity());
     }
 
@@ -644,10 +719,11 @@ public class ArtistControllerTest {
         setupGridFsDbFileMock(FILE_ID, FILE_NAME, FILE_CONTENT_TYPE);
         when(artistRepositoryMock.findOne(anyString())).thenReturn(ARTIST_TWO);
         mockMvc = MockMvcBuilders.standaloneSetup(artistControllerSpy).build();
+        ResponseEntity<byte[]> response = MaestroResponseManager.createGetFileFailureResponse();
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_TWO.getId(), ALBUMS, ALBUM_TWO.getId(), SONGS, SONG_THREE.getId(), FILE))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(header().doesNotExist("Content-Type"))
-                .andExpect(status().isOk());
+                .andExpect(content().bytes(response.getBody()))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -666,30 +742,35 @@ public class ArtistControllerTest {
         setupGridFsDbFileMock(ARTWORK_ID, ARTWORK_NAME, ARTWORK_CONTENT_TYPE);
         when(artistRepositoryMock.findOne(anyString())).thenReturn(ARTIST_TWO);
         mockMvc = MockMvcBuilders.standaloneSetup(artistControllerSpy).build();
+        ResponseEntity<byte[]> response = MaestroResponseManager.createGetFileFailureResponse();
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_TWO.getId(), ALBUMS, ALBUM_TWO.getId(), SONGS, SONG_THREE.getId(), ARTWORK))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(header().doesNotExist("Content-Type"))
-                .andExpect(status().isOk());
+                .andExpect(content().bytes(response.getBody()))
+                .andExpect(status().isNotFound());
     }
 
     @Test
     public void findFile() throws IOException {
         setupGridFsDbFileMock(FILE_ID, FILE_NAME, FILE_CONTENT_TYPE);
-        assertEquals(HttpStatus.OK, artistControllerSpy.findFile(FILE_ID).getStatusCode());
-        assertTrue(artistControllerSpy.findFile(FILE_ID).hasBody());
+        ResponseEntity<byte[]> response = artistControllerSpy.findFile(FILE_ID);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.hasBody());
     }
 
     @Test
     public void findFileNull() throws IOException {
         when(gridFsTemplate.findOne(anyObject())).thenReturn(null);
-        assertEquals(HttpStatus.OK, artistControllerSpy.findFile(FILE_ID).getStatusCode());
-        assertFalse(artistControllerSpy.findFile(FILE_ID).hasBody());
+        ResponseEntity<byte[]> response = artistControllerSpy.findFile(FILE_ID);
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals(0, response.getBody().length);
     }
 
     @Test
     public void deleteFile() {
-        assertEquals(HttpStatus.OK, artistControllerSpy.deleteFile(FILE_ID).getStatusCode());
-        assertFalse(artistControllerSpy.deleteFile(FILE_ID).hasBody());
+        ResponseEntity<MaestroResponseBody> expectedResponse = MaestroResponseManager.createDeleteSuccessResponse();
+        ResponseEntity<MaestroResponseBody> actualResponse = artistControllerSpy.deleteFile(FILE_ID);
+        assertEquals(actualResponse.getBody().getMessage(), expectedResponse.getBody().getMessage());
+        assertEquals(actualResponse.getBody().getData(), expectedResponse.getBody().getData());
     }
 
     private Artist cloneArtist(Artist artist) {
