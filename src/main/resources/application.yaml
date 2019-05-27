@@ -4,11 +4,14 @@ spring:
   data:
     mongodb:
       uri: mongodb://music-maestro:1cV5SBSDygM3gMgZ@dar-shard-00-00-1v4vw.mongodb.net:27017,dar-shard-00-01-1v4vw.mongodb.net:27017,dar-shard-00-02-1v4vw.mongodb.net:27017/musicdb?ssl=true&replicaSet=dar-shard-0&authSource=admin
-  http:
+  servlet:
     multipart:
-      max-file-size: 100MB
-      max-request-size: 100MB
+      maxFileSize: 100MB
+      maxRequestSize: 100MB
 
 logging:
-  level: ERROR
+  level:
+    org:
+      framework:
+        web: ERROR
   file: ${spring.application.name}.log
