@@ -205,7 +205,7 @@ class ArtistControllerTest {
     @Test
     @Throws(Exception::class)
     fun getAllAlbums() {
-        val response = maestroResponseManager.createGetSuccessResponse(ARTIST_ONE.albums!!)
+        val response = maestroResponseManager.createGetSuccessResponse(ARTIST_ONE.albums)
         mockMvc.perform(get(String.format("/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -268,7 +268,7 @@ class ArtistControllerTest {
                 .andExpect(jsonPath("$.message").value(response.body!!.message))
                 .andExpect(content().string(containsString("\"name\":\"AlbumFour\"")))
                 .andExpect(status().isCreated)
-        assertEquals(3, artistRepository.findById(ARTIST_ONE.id).get().albums!!.size)
+        assertEquals(3, artistRepository.findById(ARTIST_ONE.id).get().albums.size)
         assertNotEquals(ARTIST_ONE, artistRepository.findById(ARTIST_ONE.id))
     }
 
@@ -283,7 +283,7 @@ class ArtistControllerTest {
                 .andExpect(jsonPath("$.message").value(response.body!!.message))
                 .andExpect(content().string(containsString("\"name\":\"AlbumFour\"")))
                 .andExpect(status().isCreated)
-        assertEquals(1, artistRepository.findById(ARTIST_FOUR.id).get().albums!!.size)
+        assertEquals(1, artistRepository.findById(ARTIST_FOUR.id).get().albums.size)
         assertNotEquals(ALBUM_FOUR, artistRepository.findById(ARTIST_FOUR.id))
     }
 
@@ -353,7 +353,7 @@ class ArtistControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isOk)
-        val albumsAfterDelete = artistRepository.findById(ARTIST_ONE.id).get().albums!!
+        val albumsAfterDelete = artistRepository.findById(ARTIST_ONE.id).get().albums
         assertEquals(1, albumsAfterDelete.size.toLong())
         assertFalse(albumsAfterDelete.contains(ALBUM_TWO))
     }
@@ -372,7 +372,7 @@ class ArtistControllerTest {
     @Test
     @Throws(Exception::class)
     fun getAllSongs() {
-        val response = maestroResponseManager.createGetSuccessResponse(ALBUM_ONE.songs!!)
+        val response = maestroResponseManager.createGetSuccessResponse(ALBUM_ONE.songs)
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_ONE.id, SONGS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -627,12 +627,12 @@ class ArtistControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isOk)
-        val albumAfterDelete = artistRepository.findById(ARTIST_ONE.id).get().albums!!
+        val albumAfterDelete = artistRepository.findById(ARTIST_ONE.id).get().albums
                 .stream()
-                .filter { album -> album.id.equals(ALBUM_ONE.id) }
+                .filter { album -> album.id == ALBUM_ONE.id }
                 .collect(Collectors.toList())
                 .get(0)
-        val songsAfterDelete = albumAfterDelete.songs!!
+        val songsAfterDelete = albumAfterDelete.songs
         assertEquals(1, songsAfterDelete.size.toLong())
         assertFalse(songsAfterDelete.contains(SONG_ONE))
         assertTrue(songsAfterDelete.contains(SONG_TWO))
@@ -647,12 +647,12 @@ class ArtistControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isOk)
-        val albumAfterDelete = artistRepository.findById(ARTIST_ONE.id).get().albums!!
+        val albumAfterDelete = artistRepository.findById(ARTIST_ONE.id).get().albums
                 .stream()
-                .filter { album -> album.id.equals(ALBUM_TWO.id) }
+                .filter { album -> album.id == ALBUM_TWO.id }
                 .collect(Collectors.toList())
                 .get(0)
-        val songsAfterDelete = albumAfterDelete.songs!!
+        val songsAfterDelete = albumAfterDelete.songs
         assertTrue(songsAfterDelete.isEmpty())
     }
 
@@ -691,40 +691,40 @@ class ArtistControllerTest {
 
     @Test
     fun findArtist() {
-        assertTrue(artistController.findArtist(ARTIST_ONE.id).isPresent())
+        assertTrue(artistController.findArtist(ARTIST_ONE.id).isPresent)
         assertEquals(artistRepository.findById(ARTIST_ONE.id), artistController.findArtist(ARTIST_ONE.id).get())
     }
 
     @Test
     fun findAlbum() {
-        assertTrue(artistController.findAlbum(ARTIST_ONE.id, ALBUM_ONE.id).isPresent())
+        assertTrue(artistController.findAlbum(ARTIST_ONE.id, ALBUM_ONE.id).isPresent)
         assertEquals(ALBUM_ONE, artistController.findAlbum(ARTIST_ONE.id, ALBUM_ONE.id).get())
     }
 
     @Test
     fun findAlbumNull() {
-        assertFalse(artistController.findAlbum(ARTIST_FOUR.id, UNKNOWN_ID).isPresent())
+        assertFalse(artistController.findAlbum(ARTIST_FOUR.id, UNKNOWN_ID).isPresent)
     }
 
     @Test
     fun findAlbumNoMatch() {
-        assertFalse(artistController.findAlbum(ARTIST_ONE.id, UNKNOWN_ID).isPresent())
+        assertFalse(artistController.findAlbum(ARTIST_ONE.id, UNKNOWN_ID).isPresent)
     }
 
     @Test
     fun findSong() {
-        assertTrue(artistController.findSong(ARTIST_ONE.id, ALBUM_ONE.id, SONG_ONE.id).isPresent())
+        assertTrue(artistController.findSong(ARTIST_ONE.id, ALBUM_ONE.id, SONG_ONE.id).isPresent)
         assertEquals(artistController.findSong(ARTIST_ONE.id, ALBUM_ONE.id, SONG_ONE.id).get(), SONG_ONE)
     }
 
     @Test
     fun findSongNull() {
-        assertFalse(artistController.findSong(ARTIST_THREE.id, ALBUM_FOUR.id, UNKNOWN_ID).isPresent())
+        assertFalse(artistController.findSong(ARTIST_THREE.id, ALBUM_FOUR.id, UNKNOWN_ID).isPresent)
     }
 
     @Test
     fun findSongNoMatch() {
-        assertFalse(artistController.findSong(ARTIST_TWO.id, ALBUM_THREE.id, UNKNOWN_ID).isPresent())
+        assertFalse(artistController.findSong(ARTIST_TWO.id, ALBUM_THREE.id, UNKNOWN_ID).isPresent)
     }
 
     @Test
@@ -796,7 +796,7 @@ class ArtistControllerTest {
         val expectedResponse = maestroResponseManager.createGetFileSuccessResponse(headers, SONG_FILE)
         `when`(maestroResponseManagerMock.createGetFileSuccessResponse(ArgumentMatchers.anyObject(), ArgumentMatchers.anyObject())).thenReturn(expectedResponse)
         val actualResponse = artistControllerSpy.findFile(FILE_ID)
-        assertEquals(expectedResponse.getStatusCode(), actualResponse.statusCode)
+        assertEquals(expectedResponse.statusCode, actualResponse.statusCode)
         assertEquals(expectedResponse.body, expectedResponse.body)
     }
 
@@ -807,7 +807,7 @@ class ArtistControllerTest {
         val expectedResponse = maestroResponseManager.createGetFileFailureResponse()
         `when`(maestroResponseManagerMock.createGetFileFailureResponse()).thenReturn(expectedResponse)
         val actualResponse = artistControllerSpy.findFile(FILE_ID)
-        assertEquals(expectedResponse.getStatusCode(), actualResponse.statusCode)
+        assertEquals(expectedResponse.statusCode, actualResponse.statusCode)
         assertEquals(expectedResponse.body, expectedResponse.body)
     }
 
@@ -816,7 +816,7 @@ class ArtistControllerTest {
         val expectedResponse = maestroResponseManager.createDeleteSuccessResponse()
         `when`(maestroResponseManagerMock.createDeleteSuccessResponse()).thenReturn(expectedResponse)
         val actualResponse = artistControllerSpy.deleteFile(FILE_ID)
-        assertEquals(expectedResponse.getStatusCode(), actualResponse.getStatusCode())
+        assertEquals(expectedResponse.statusCode, actualResponse.statusCode)
         assertEquals(actualResponse.body, expectedResponse.body)
     }
 

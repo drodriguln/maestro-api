@@ -49,7 +49,7 @@ class ArtistController {
     @GetMapping("/artists/{artistId}")
     fun getArtist(@PathVariable artistId: String): ResponseEntity<MaestroResponseBody> {
         val repoArtistOptional = findArtist(artistId)
-        return if (repoArtistOptional.isPresent())
+        return if (repoArtistOptional.isPresent)
             maestroResponseManager.createGetSuccessResponse(repoArtistOptional.get())
         else
             maestroResponseManager.createGetFailureResponse()
@@ -64,7 +64,7 @@ class ArtistController {
     @PutMapping("/artists/{artistId}")
     fun putArtist(@PathVariable artistId: String, @RequestBody artist: Artist): ResponseEntity<MaestroResponseBody> {
         val repoArtistOptional = findArtist(artistId)
-        if (repoArtistOptional.isPresent() && artistId == repoArtistOptional.get().id) {
+        if (repoArtistOptional.isPresent && artistId == repoArtistOptional.get().id) {
             if (artist.albums == null)
                 artist.albums = repoArtistOptional.get().albums
             artistRepository.deleteById(repoArtistOptional.get().id)
@@ -76,12 +76,12 @@ class ArtistController {
     @DeleteMapping("/artists/{artistId}")
     fun deleteArtist(@PathVariable artistId: String): ResponseEntity<MaestroResponseBody> {
         val repoArtistOptional = findArtist(artistId)
-        if (!repoArtistOptional.isPresent())
+        if (!repoArtistOptional.isPresent)
             return maestroResponseManager.createDeleteFailureResponse()
         val repoAlbumOptional = repoArtistOptional.get().albums.stream()
                 .filter { repoAlbum -> repoAlbum.songs != null }
                 .findFirst()
-        if (repoAlbumOptional.isPresent() && repoAlbumOptional.get().songs != null) {
+        if (repoAlbumOptional.isPresent && repoAlbumOptional.get().songs != null) {
             for (song in repoAlbumOptional.get().songs) {
                 if (song.artworkFileId != null)
                     deleteFile(song.artworkFileId!!)
@@ -99,7 +99,7 @@ class ArtistController {
     @GetMapping("/artists/{artistId}/albums")
     fun getAllAlbums(@PathVariable artistId: String): ResponseEntity<MaestroResponseBody> {
         val repoArtistOptional = findArtist(artistId)
-        if (repoArtistOptional.isPresent() && repoArtistOptional.get().albums != null) {
+        if (repoArtistOptional.isPresent && repoArtistOptional.get().albums != null) {
             val repoAlbums = repoArtistOptional.get().albums
             Collections.sort(repoAlbums)
             return maestroResponseManager.createGetSuccessResponse(repoAlbums)
@@ -110,7 +110,7 @@ class ArtistController {
     @GetMapping("/artists/{artistId}/albums/{albumId}")
     fun getAlbum(@PathVariable artistId: String, @PathVariable albumId: String): ResponseEntity<MaestroResponseBody> {
         val repoAlbum = findAlbum(artistId, albumId)
-        return if (repoAlbum.isPresent())
+        return if (repoAlbum.isPresent)
             maestroResponseManager.createGetSuccessResponse(repoAlbum.get())
         else
             maestroResponseManager.createGetFailureResponse()
@@ -119,7 +119,7 @@ class ArtistController {
     @PostMapping("/artists/{artistId}/albums")
     fun postAlbum(@PathVariable artistId: String, @RequestBody album: Album): ResponseEntity<MaestroResponseBody> {
         val repoArtistOptional = findArtist(artistId)
-        if (!repoArtistOptional.isPresent())
+        if (!repoArtistOptional.isPresent)
             return maestroResponseManager.createSaveFailureResponse()
         if (repoArtistOptional.get().albums == null)
             repoArtistOptional.get().albums = emptyList()
@@ -132,12 +132,12 @@ class ArtistController {
     @PutMapping("/artists/{artistId}/albums/{albumId}")
     fun putAlbum(@PathVariable artistId: String, @PathVariable albumId: String, @RequestBody album: Album): ResponseEntity<MaestroResponseBody> {
         val repoArtistOptional = findArtist(artistId)
-        if (!repoArtistOptional.isPresent() || repoArtistOptional.get().albums == null)
+        if (!repoArtistOptional.isPresent || repoArtistOptional.get().albums == null)
             return maestroResponseManager.createSaveFailureResponse()
         val repoAlbumOptional = repoArtistOptional.get().albums.stream()
                 .filter { repoAlbum -> albumId == repoAlbum.id }
                 .findFirst()
-        if (repoAlbumOptional.isPresent() && album.songs == null)
+        if (repoAlbumOptional.isPresent && album.songs == null)
             album.songs = repoAlbumOptional.get().songs
         repoArtistOptional.get().albums -= repoAlbumOptional.get()
         val albumToPut = Album(albumId, album.name, album.songs)
@@ -150,12 +150,12 @@ class ArtistController {
     @Throws(IOException::class)
     fun deleteAlbum(@PathVariable artistId: String, @PathVariable albumId: String): ResponseEntity<MaestroResponseBody> {
         val repoArtistOptional = findArtist(artistId)
-        if (!repoArtistOptional.isPresent() || repoArtistOptional.get().albums == null)
+        if (!repoArtistOptional.isPresent || repoArtistOptional.get().albums == null)
             return maestroResponseManager.createDeleteFailureResponse()
         val repoAlbumOptional = repoArtistOptional.get().albums.stream()
                 .filter { repoAlbum -> albumId == repoAlbum.id }
                 .findFirst()
-        if (repoAlbumOptional.isPresent() && repoAlbumOptional.get().songs != null) {
+        if (repoAlbumOptional.isPresent && repoAlbumOptional.get().songs != null) {
             for (song in repoAlbumOptional.get().songs) {
                 if (song.artworkFileId != null)
                     deleteFile(song.artworkFileId!!)
@@ -174,7 +174,7 @@ class ArtistController {
     @GetMapping("/artists/{artistId}/albums/{albumId}/songs")
     fun getAllSongs(@PathVariable artistId: String, @PathVariable albumId: String): ResponseEntity<MaestroResponseBody> {
         val repoAlbumOptional = findAlbum(artistId, albumId)
-        if (repoAlbumOptional.isPresent() && repoAlbumOptional.get().songs != null) {
+        if (repoAlbumOptional.isPresent && repoAlbumOptional.get().songs != null) {
             val repoSongs = repoAlbumOptional.get().songs
             Collections.sort(repoSongs)
             return maestroResponseManager.createGetSuccessResponse(repoSongs)
@@ -185,7 +185,7 @@ class ArtistController {
     @GetMapping("/artists/{artistId}/albums/{albumId}/songs/{songId}")
     fun getSong(@PathVariable artistId: String, @PathVariable albumId: String, @PathVariable songId: String): ResponseEntity<MaestroResponseBody> {
         val repoSongOptional = findSong(artistId, albumId, songId)
-        return if (repoSongOptional.isPresent())
+        return if (repoSongOptional.isPresent)
             maestroResponseManager.createGetSuccessResponse(repoSongOptional.get())
         else
             maestroResponseManager.createGetFailureResponse()
@@ -208,12 +208,12 @@ class ArtistController {
             newTrackNumber = "0"
         val newSong = Song(newSongName!!, newTrackNumber, year, songFileId.toString(), artworkFileId.toString())
         val repoArtistOptional = findArtist(artistId)
-        if (!repoArtistOptional.isPresent() || repoArtistOptional.get().albums == null)
+        if (!repoArtistOptional.isPresent || repoArtistOptional.get().albums == null)
             return maestroResponseManager.createSaveFailureResponse()
         val repoAlbumOptional = repoArtistOptional.get().albums.stream()
                 .filter { repoAlbum -> albumId == repoAlbum.id }
                 .findFirst()
-        if (!repoAlbumOptional.isPresent())
+        if (!repoAlbumOptional.isPresent)
             return maestroResponseManager.createSaveFailureResponse()
         if (repoAlbumOptional.get().songs == null)
             repoAlbumOptional.get().songs = emptyList()
@@ -227,17 +227,17 @@ class ArtistController {
     fun putSong(@PathVariable artistId: String, @PathVariable albumId: String, @PathVariable songId: String,
                 @RequestBody song: Song): ResponseEntity<MaestroResponseBody> {
         val repoArtistOptional = findArtist(artistId)
-        if (!repoArtistOptional.isPresent() || repoArtistOptional.get().albums == null)
+        if (!repoArtistOptional.isPresent || repoArtistOptional.get().albums == null)
             return maestroResponseManager.createSaveFailureResponse()
         val repoAlbumOptional = repoArtistOptional.get().albums.stream()
                 .filter { repoAlbum -> albumId == repoAlbum.id }
                 .findFirst()
-        if (!repoAlbumOptional.isPresent() || repoAlbumOptional.get().songs == null)
+        if (!repoAlbumOptional.isPresent || repoAlbumOptional.get().songs == null)
             return maestroResponseManager.createSaveFailureResponse()
         val repoSongOptional = repoAlbumOptional.get().songs.stream()
                 .filter { repoSong -> songId == repoSong.id }
                 .findFirst()
-        if (repoSongOptional.isPresent()) {
+        if (repoSongOptional.isPresent) {
             if (song.fileId == null)
                 song.fileId = repoSongOptional.get().fileId
             if (song.fileId == null)
@@ -252,17 +252,17 @@ class ArtistController {
     @Throws(IOException::class)
     fun deleteSong(@PathVariable artistId: String, @PathVariable albumId: String, @PathVariable songId: String): ResponseEntity<MaestroResponseBody> {
         val repoArtistOptional = findArtist(artistId)
-        if (!repoArtistOptional.isPresent() || repoArtistOptional.get().albums == null)
+        if (!repoArtistOptional.isPresent || repoArtistOptional.get().albums == null)
             return maestroResponseManager.createDeleteFailureResponse()
         val repoAlbumOptional = repoArtistOptional.get().albums.stream()
                 .filter { repoAlbum -> albumId == repoAlbum.id }
                 .findFirst()
-        if (!repoAlbumOptional.isPresent() || repoAlbumOptional.get().songs == null)
+        if (!repoAlbumOptional.isPresent || repoAlbumOptional.get().songs == null)
             return maestroResponseManager.createDeleteFailureResponse()
         val repoSongOptional = repoAlbumOptional.get().songs.stream()
                 .filter { repoSong -> songId == repoSong.id }
                 .findFirst()
-        if (repoSongOptional.isPresent() && songId == repoSongOptional.get().id) {
+        if (repoSongOptional.isPresent && songId == repoSongOptional.get().id) {
             if (repoSongOptional.get().artworkFileId != null)
                 deleteFile(repoSongOptional.get().artworkFileId!!)
             deleteFile(repoSongOptional.get().fileId)
@@ -276,7 +276,7 @@ class ArtistController {
     @Throws(IOException::class)
     fun getSongFile(@PathVariable artistId: String, @PathVariable albumId: String, @PathVariable songId: String): ResponseEntity<GridFsResource> {
         val repoSong = findSong(artistId, albumId, songId)
-        return if (repoSong.isPresent())
+        return if (repoSong.isPresent)
             findFile(repoSong.get().fileId)
         else
             maestroResponseManager.createGetFileFailureResponse()
@@ -286,7 +286,7 @@ class ArtistController {
     @Throws(IOException::class)
     fun getArtworkFile(@PathVariable artistId: String, @PathVariable albumId: String, @PathVariable songId: String): ResponseEntity<GridFsResource> {
         val repoSong = findSong(artistId, albumId, songId)
-        return if (repoSong.isPresent() && repoSong.get().artworkFileId != null)
+        return if (repoSong.isPresent && repoSong.get().artworkFileId != null)
             findFile(repoSong.get().artworkFileId!!)
         else
             maestroResponseManager.createGetFileFailureResponse()
@@ -313,7 +313,7 @@ class ArtistController {
 
     internal fun findAlbum(artistId: String, albumId: String): Optional<Album> {
         val repoArtistOptional = findArtist(artistId)
-        return if (repoArtistOptional.isPresent() && repoArtistOptional.get().albums != null)
+        return if (repoArtistOptional.isPresent && repoArtistOptional.get().albums != null)
             repoArtistOptional.get().albums.stream()
                     .filter { repoAlbum -> repoAlbum.id.equals(albumId) }
                     .findFirst()
@@ -323,7 +323,7 @@ class ArtistController {
 
     internal fun findSong(artistId: String, albumId: String, songId: String): Optional<Song> {
         val repoAlbumOptional = findAlbum(artistId, albumId)
-        return if (repoAlbumOptional.isPresent() && repoAlbumOptional.get().songs != null)
+        return if (repoAlbumOptional.isPresent && repoAlbumOptional.get().songs != null)
             repoAlbumOptional.get().songs.stream()
                     .filter { repoSong -> songId == repoSong.id }
                     .findFirst()
