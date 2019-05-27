@@ -27,7 +27,7 @@ dependencies {
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-	testImplementation("com.github.fakemongo:fongo:2.2.0-RC2") // Need RC to fix testing bug
+	testImplementation("de.bwaldvogel:mongo-java-server:1.16.0")
 	testImplementation("org.mockito:mockito-inline")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 }

@@ -31,3 +31,4 @@ Bradley
 ### VS Code ###
 .vscode/
 .DS_Store
+*.log

@@ -1,7 +1,7 @@
 package com.drodriguez.maestro.api.web
 
 import com.drodriguez.maestro.api.Application
-import com.drodriguez.maestro.api.config.FongoConfiguration
+import com.drodriguez.maestro.api.config.MongoTestConfiguration
 import com.drodriguez.maestro.api.domain.ArtistRepository
 import com.drodriguez.maestro.api.model.Album
 import com.drodriguez.maestro.api.model.Artist
@@ -21,8 +21,6 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.mock.web.MockMultipartFile
-import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.junit4.SpringRunner
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
@@ -43,10 +41,8 @@ import org.springframework.data.mongodb.gridfs.GridFsResource
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 
-@ActiveProfiles("fongo")
-@ContextConfiguration(classes = [FongoConfiguration::class])
-@SpringBootTest
 @RunWith(SpringRunner::class)
+@SpringBootTest(classes = [Application::class, MongoTestConfiguration::class])
 class ArtistControllerTest {
 
     @Autowired
@@ -70,6 +66,7 @@ class ArtistControllerTest {
 
     @Before
     fun init() {
+        artistRepository.deleteAll()
         artistRepository.save(ARTIST_ONE)
         artistRepository.save(ARTIST_TWO)
         artistRepository.save(ARTIST_THREE)
@@ -85,7 +82,7 @@ class ArtistControllerTest {
         mockMvc.perform(get(String.format("/%s", ARTISTS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isOk)
     }
 
@@ -97,7 +94,7 @@ class ArtistControllerTest {
         mockMvc.perform(get(String.format("/%s", ARTISTS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isNotFound)
     }
 
@@ -108,7 +105,7 @@ class ArtistControllerTest {
         mockMvc.perform(get(String.format("/%s/%s", ARTISTS, ARTIST_ONE.id))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isOk)
     }
 
@@ -119,7 +116,7 @@ class ArtistControllerTest {
         mockMvc.perform(get(String.format("/%s/%s", ARTISTS, UNKNOWN_ID))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isNotFound)
     }
 
@@ -131,7 +128,7 @@ class ArtistControllerTest {
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(ARTIST_ONE)))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isCreated)
         assertEquals(ARTIST_ONE, artistRepository.findById(ARTIST_ONE.id))
     }
@@ -146,7 +143,7 @@ class ArtistControllerTest {
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(artistToPut)))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isCreated)
         assertNotEquals(ARTIST_ONE, artistRepository.findById(ARTIST_ONE.id))
     }
@@ -162,7 +159,7 @@ class ArtistControllerTest {
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(artistToPut)))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isCreated)
         assertNotEquals(ARTIST_FOUR, artistRepository.findById(ARTIST_FOUR.id))
     }
@@ -173,7 +170,7 @@ class ArtistControllerTest {
         val response = maestroResponseManager.createDeleteSuccessResponse()
         mockMvc.perform(delete(String.format("/%s/%s", ARTISTS, ARTIST_TWO.id))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isOk)
         val artistsAfterDelete = artistRepository.findAll()
         assertEquals(3, artistsAfterDelete.size.toLong())
@@ -187,7 +184,7 @@ class ArtistControllerTest {
         mockMvc.perform(delete(String.format("/%s/%s", ARTISTS, ARTIST_THREE.id))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isOk)
         val artistsAfterDelete = artistRepository.findAll()
         assertEquals(3, artistsAfterDelete.size.toLong())
@@ -201,7 +198,7 @@ class ArtistControllerTest {
         mockMvc.perform(delete(String.format("/%s/%s", ARTISTS, UNKNOWN_ID))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isUnprocessableEntity)
     }
 
@@ -212,7 +209,7 @@ class ArtistControllerTest {
         mockMvc.perform(get(String.format("/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isOk)
     }
 
@@ -223,7 +220,7 @@ class ArtistControllerTest {
         mockMvc.perform(get(String.format("/%s/%s/%s", ARTISTS, UNKNOWN_ID, ALBUMS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isNotFound)
     }
 
@@ -234,7 +231,7 @@ class ArtistControllerTest {
         mockMvc.perform(get(String.format("/%s/%s/%s", ARTISTS, ARTIST_FOUR.id, ALBUMS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isNotFound)
     }
 
@@ -245,7 +242,7 @@ class ArtistControllerTest {
         mockMvc.perform(get(String.format("/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_TWO.id))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isOk)
     }
 
@@ -256,7 +253,7 @@ class ArtistControllerTest {
         mockMvc.perform(get(String.format("/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, UNKNOWN_ID))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isNotFound)
     }
 
@@ -268,7 +265,7 @@ class ArtistControllerTest {
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(ALBUM_FOUR)))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(jsonPath("$.message").value(response.getBody()!!.message))
+                .andExpect(jsonPath("$.message").value(response.body!!.message))
                 .andExpect(content().string(containsString("\"name\":\"AlbumFour\"")))
                 .andExpect(status().isCreated)
         assertEquals(3, artistRepository.findById(ARTIST_ONE.id).get().albums!!.size)
@@ -283,7 +280,7 @@ class ArtistControllerTest {
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(ALBUM_FOUR)))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(jsonPath("$.message").value(response.getBody()!!.message))
+                .andExpect(jsonPath("$.message").value(response.body!!.message))
                 .andExpect(content().string(containsString("\"name\":\"AlbumFour\"")))
                 .andExpect(status().isCreated)
         assertEquals(1, artistRepository.findById(ARTIST_FOUR.id).get().albums!!.size)
@@ -298,7 +295,7 @@ class ArtistControllerTest {
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(ALBUM_FOUR)))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isUnprocessableEntity)
     }
 
@@ -312,7 +309,7 @@ class ArtistControllerTest {
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(albumToPut)))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isCreated)
         assertNotEquals(ARTIST_ONE, artistRepository.findById(ARTIST_ONE.id))
     }
@@ -327,7 +324,7 @@ class ArtistControllerTest {
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(albumToPut)))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isUnprocessableEntity)
         assertEquals(ARTIST_ONE, artistRepository.findById(ARTIST_ONE.id))
     }
@@ -342,7 +339,7 @@ class ArtistControllerTest {
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(albumToPut)))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isCreated)
         assertNotEquals(ARTIST_THREE, artistRepository.findById(ARTIST_THREE.id))
     }
@@ -354,7 +351,7 @@ class ArtistControllerTest {
         mockMvc.perform(delete(String.format("/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_TWO.id))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isOk)
         val albumsAfterDelete = artistRepository.findById(ARTIST_ONE.id).get().albums!!
         assertEquals(1, albumsAfterDelete.size.toLong())
@@ -368,7 +365,7 @@ class ArtistControllerTest {
         mockMvc.perform(delete(String.format("/%s/%s/%s/%s", ARTISTS, UNKNOWN_ID, ALBUMS, ALBUM_TWO.id))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isUnprocessableEntity)
     }
 
@@ -380,7 +377,7 @@ class ArtistControllerTest {
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isOk)
     }
 
@@ -391,7 +388,7 @@ class ArtistControllerTest {
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s", ARTISTS, UNKNOWN_ID, ALBUMS, UNKNOWN_ID, SONGS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isNotFound)
     }
 
@@ -402,7 +399,7 @@ class ArtistControllerTest {
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, UNKNOWN_ID, SONGS))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isNotFound)
     }
 
@@ -413,7 +410,7 @@ class ArtistControllerTest {
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_ONE.id, SONGS, SONG_TWO.id))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isOk)
     }
 
@@ -424,7 +421,7 @@ class ArtistControllerTest {
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_FOUR.id, ALBUMS, ALBUM_FOUR.id, SONGS, UNKNOWN_ID))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isNotFound)
     }
 
@@ -440,7 +437,7 @@ class ArtistControllerTest {
                 .param("year", SONG_THREE.year)
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(jsonPath("$.message").value(response.getBody()!!.message))
+                .andExpect(jsonPath("$.message").value(response.body!!.message))
                 .andExpect(content().string(containsString("\"name\":\"SongThree\"")))
                 .andExpect(status().isCreated)
     }
@@ -457,7 +454,7 @@ class ArtistControllerTest {
                 .param("year", SONG_THREE.year)
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(jsonPath("$.message").value(response.getBody()!!.message))
+                .andExpect(jsonPath("$.message").value(response.body!!.message))
                 .andExpect(content().string(containsString("\"name\":\"song-file-one\"")))
                 .andExpect(status().isCreated)
     }
@@ -474,7 +471,7 @@ class ArtistControllerTest {
                 .param("year", SONG_THREE.year)
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(jsonPath("$.message").value(response.getBody()!!.message))
+                .andExpect(jsonPath("$.message").value(response.body!!.message))
                 .andExpect(content().string(containsString("\"trackNumber\":\"0\"")))
                 .andExpect(status().isCreated)
     }
@@ -491,7 +488,7 @@ class ArtistControllerTest {
                 .param("year", SONG_THREE.year)
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isUnprocessableEntity)
     }
 
@@ -507,7 +504,7 @@ class ArtistControllerTest {
                 .param("year", SONG_FOUR.year)
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isUnprocessableEntity)
     }
 
@@ -526,7 +523,7 @@ class ArtistControllerTest {
                 .param("year", SONG_FOUR.year)
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().string(toJson(response.getBody())))
+                .andExpect(content().string(toJson(response.body)))
                 .andExpect(status().isUnprocessableEntity)
     }
 
@@ -542,7 +539,7 @@ class ArtistControllerTest {
                 .param("year", SONG_FOUR.year)
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(jsonPath("$.message").value(response.getBody()!!.message))
+                .andExpect(jsonPath("$.message").value(response.body!!.message))
                 .andExpect(content().string(containsString("\"name\":\"SongFour\"")))
                 .andExpect(status().isCreated)
     }
@@ -557,7 +554,7 @@ class ArtistControllerTest {
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(songToPut)))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isCreated)
         assertNotEquals(ARTIST_ONE, artistRepository.findById(ARTIST_ONE.id))
     }
@@ -572,7 +569,7 @@ class ArtistControllerTest {
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(songToPut)))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isUnprocessableEntity)
         assertEquals(ARTIST_ONE, artistRepository.findById(ARTIST_ONE.id))
     }
@@ -586,7 +583,7 @@ class ArtistControllerTest {
         mockMvc.perform(put(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_THREE.id, ALBUMS, UNKNOWN_ID, SONGS, SONG_FOUR.id))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(songToPut)))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isUnprocessableEntity)
         assertEquals(ARTIST_THREE, artistRepository.findById(ARTIST_THREE.id))
     }
@@ -601,7 +598,7 @@ class ArtistControllerTest {
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(songToPut)))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isCreated)
         assertNotEquals(songToPut, artistRepository.findById(ARTIST_ONE.id))
     }
@@ -616,7 +613,7 @@ class ArtistControllerTest {
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .content(toJson(songToPut)))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isCreated)
         assertNotEquals(songToPut, artistRepository.findById(ARTIST_ONE.id))
     }
@@ -628,7 +625,7 @@ class ArtistControllerTest {
         mockMvc.perform(delete(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_ONE.id, SONGS, SONG_ONE.id))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isOk)
         val albumAfterDelete = artistRepository.findById(ARTIST_ONE.id).get().albums!!
                 .stream()
@@ -648,7 +645,7 @@ class ArtistControllerTest {
         mockMvc.perform(delete(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_TWO.id, SONGS, SONG_THREE.id))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isOk)
         val albumAfterDelete = artistRepository.findById(ARTIST_ONE.id).get().albums!!
                 .stream()
@@ -666,7 +663,7 @@ class ArtistControllerTest {
         mockMvc.perform(delete(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, UNKNOWN_ID, ALBUMS, ALBUM_ONE.id, SONGS, SONG_ONE.id))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isUnprocessableEntity)
     }
 
@@ -677,7 +674,7 @@ class ArtistControllerTest {
         mockMvc.perform(delete(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_FOUR.id, ALBUMS, UNKNOWN_ID, SONGS, SONG_FOUR.id))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isUnprocessableEntity)
     }
 
@@ -688,7 +685,7 @@ class ArtistControllerTest {
         mockMvc.perform(delete(String.format("/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_THREE.id, ALBUMS, ALBUM_FOUR, SONGS, UNKNOWN_ID))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(toJson(response.getBody())))
+                .andExpect(content().json(toJson(response.body)))
                 .andExpect(status().isUnprocessableEntity)
     }
 
@@ -756,7 +753,7 @@ class ArtistControllerTest {
         mockMvc = MockMvcBuilders.standaloneSetup(artistControllerSpy).build()
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_TWO.id, ALBUMS, ALBUM_TWO.id, SONGS, SONG_THREE.id, FILE))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(""))
+                .andExpect(content().string(EMPTY_STRING))
                 .andExpect(status().isNotFound)
     }
 
@@ -786,7 +783,7 @@ class ArtistControllerTest {
         mockMvc = MockMvcBuilders.standaloneSetup(artistControllerSpy).build()
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_TWO.id, ALBUMS, ALBUM_TWO.id, SONGS, SONG_THREE.id, ARTWORK))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().json(""))
+                .andExpect(content().string(EMPTY_STRING))
                 .andExpect(status().isNotFound)
     }
 
@@ -800,7 +797,7 @@ class ArtistControllerTest {
         `when`(maestroResponseManagerMock.createGetFileSuccessResponse(ArgumentMatchers.anyObject(), ArgumentMatchers.anyObject())).thenReturn(expectedResponse)
         val actualResponse = artistControllerSpy.findFile(FILE_ID)
         assertEquals(expectedResponse.getStatusCode(), actualResponse.statusCode)
-        assertEquals(expectedResponse.getBody(), expectedResponse.getBody())
+        assertEquals(expectedResponse.body, expectedResponse.body)
     }
 
     @Test
@@ -811,7 +808,7 @@ class ArtistControllerTest {
         `when`(maestroResponseManagerMock.createGetFileFailureResponse()).thenReturn(expectedResponse)
         val actualResponse = artistControllerSpy.findFile(FILE_ID)
         assertEquals(expectedResponse.getStatusCode(), actualResponse.statusCode)
-        assertEquals(expectedResponse.getBody(), expectedResponse.getBody())
+        assertEquals(expectedResponse.body, expectedResponse.body)
     }
 
     @Test
@@ -820,7 +817,7 @@ class ArtistControllerTest {
         `when`(maestroResponseManagerMock.createDeleteSuccessResponse()).thenReturn(expectedResponse)
         val actualResponse = artistControllerSpy.deleteFile(FILE_ID)
         assertEquals(expectedResponse.getStatusCode(), actualResponse.getStatusCode())
-        assertEquals(actualResponse.getBody(), expectedResponse.getBody())
+        assertEquals(actualResponse.body, expectedResponse.body)
     }
 
     private fun cloneArtist(artist: Artist): Artist {
@@ -887,6 +884,7 @@ class ArtistControllerTest {
         private const val FILE = "file"
         private const val ARTWORK = "artwork"
         private const val UNKNOWN_ID = "unknownId"
+        private const val EMPTY_STRING = ""
     }
 
 }
