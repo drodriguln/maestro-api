@@ -429,7 +429,7 @@ class ArtistControllerTest {
     @Throws(Exception::class)
     fun postSong() {
         val response = maestroResponseManager.createSaveSuccessResponse(SONG_THREE)
-        mockMvc.perform(fileUpload(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_TWO.id, SONGS))
+        mockMvc.perform(multipart(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_TWO.id, SONGS))
                 .file(SONG_FILE_ONE)
                 .file(ARTWORK_FILE_ONE)
                 .param("songName", SONG_THREE.name)
@@ -446,7 +446,7 @@ class ArtistControllerTest {
     @Throws(Exception::class)
     fun postSongNoNameGiven() {
         val response = maestroResponseManager.createSaveSuccessResponse(SONG_THREE)
-        mockMvc.perform(fileUpload(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_TWO.id, SONGS))
+        mockMvc.perform(multipart(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_TWO.id, SONGS))
                 .file(SONG_FILE_ONE)
                 .file(ARTWORK_FILE_ONE)
                 .param("songName", "")
@@ -463,7 +463,7 @@ class ArtistControllerTest {
     @Throws(Exception::class)
     fun postSongNoTrackNumberGiven() {
         val response = maestroResponseManager.createSaveSuccessResponse(SONG_THREE)
-        mockMvc.perform(fileUpload(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_TWO.id, SONGS))
+        mockMvc.perform(multipart(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_TWO.id, SONGS))
                 .file(SONG_FILE_ONE)
                 .file(ARTWORK_FILE_ONE)
                 .param("songName", SONG_THREE.name)
@@ -480,7 +480,7 @@ class ArtistControllerTest {
     @Throws(Exception::class)
     fun postSongNoArtistExists() {
         val response = maestroResponseManager.createSaveFailureResponse()
-        mockMvc.perform(fileUpload(String.format("/%s/%s/%s/%s/%s", ARTISTS, UNKNOWN_ID, ALBUMS, ALBUM_TWO.id, SONGS))
+        mockMvc.perform(multipart(String.format("/%s/%s/%s/%s/%s", ARTISTS, UNKNOWN_ID, ALBUMS, ALBUM_TWO.id, SONGS))
                 .file(SONG_FILE_ONE)
                 .file(ARTWORK_FILE_ONE)
                 .param("songName", SONG_THREE.name)
@@ -496,7 +496,7 @@ class ArtistControllerTest {
     @Throws(Exception::class)
     fun postSongNoAlbumExists() {
         val response = maestroResponseManager.createSaveFailureResponse()
-        mockMvc.perform(fileUpload(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_FOUR.id, ALBUMS, UNKNOWN_ID, SONGS))
+        mockMvc.perform(multipart(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_FOUR.id, ALBUMS, UNKNOWN_ID, SONGS))
                 .file(SONG_FILE_ONE)
                 .file(ARTWORK_FILE_ONE)
                 .param("songName", SONG_FOUR.name)
@@ -515,7 +515,7 @@ class ArtistControllerTest {
         artistWithEmptyAlbumList.albums = emptyList()
         artistRepository.save(artistWithEmptyAlbumList)
         val response = maestroResponseManager.createSaveFailureResponse()
-        mockMvc.perform(fileUpload(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_FOUR.id, ALBUMS, ALBUM_FOUR.id, SONGS))
+        mockMvc.perform(multipart(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_FOUR.id, ALBUMS, ALBUM_FOUR.id, SONGS))
                 .file(SONG_FILE_ONE)
                 .file(ARTWORK_FILE_ONE)
                 .param("songName", SONG_FOUR.name)
@@ -531,7 +531,7 @@ class ArtistControllerTest {
     @Throws(Exception::class)
     fun postSongNoneExist() {
         val response = maestroResponseManager.createSaveSuccessResponse(SONG_FOUR)
-        mockMvc.perform(fileUpload(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_THREE.id, ALBUMS, ALBUM_FOUR.id, SONGS))
+        mockMvc.perform(multipart(String.format("/%s/%s/%s/%s/%s", ARTISTS, ARTIST_THREE.id, ALBUMS, ALBUM_FOUR.id, SONGS))
                 .file(SONG_FILE_ONE)
                 .file(ARTWORK_FILE_ONE)
                 .param("songName", SONG_FOUR.name)
@@ -630,8 +630,7 @@ class ArtistControllerTest {
         val albumAfterDelete = artistRepository.findById(ARTIST_ONE.id).get().albums
                 .stream()
                 .filter { album -> album.id == ALBUM_ONE.id }
-                .collect(Collectors.toList())
-                .get(0)
+                .collect(Collectors.toList())[0]
         val songsAfterDelete = albumAfterDelete.songs
         assertEquals(1, songsAfterDelete.size.toLong())
         assertFalse(songsAfterDelete.contains(SONG_ONE))
@@ -650,8 +649,7 @@ class ArtistControllerTest {
         val albumAfterDelete = artistRepository.findById(ARTIST_ONE.id).get().albums
                 .stream()
                 .filter { album -> album.id == ALBUM_TWO.id }
-                .collect(Collectors.toList())
-                .get(0)
+                .collect(Collectors.toList())[0]
         val songsAfterDelete = albumAfterDelete.songs
         assertTrue(songsAfterDelete.isEmpty())
     }
@@ -730,11 +728,11 @@ class ArtistControllerTest {
     @Test
     @Throws(Exception::class)
     fun getSongFile() {
-        setupGridFsDbFileMock(FILE_ID, FILE_NAME, FILE_CONTENT_TYPE)
+        setupGridFsFileMock(FILE_ID, FILE_NAME, FILE_CONTENT_TYPE)
         val headers = HttpHeaders()
         headers.contentType = MediaType.parseMediaType(FILE_CONTENT_TYPE)
         val response = maestroResponseManager.createGetFileSuccessResponse(headers, SONG_FILE)
-        `when`(maestroResponseManagerMock.createGetFileSuccessResponse(ArgumentMatchers.anyObject(), ArgumentMatchers.anyObject())).thenReturn(response)
+        `when`(maestroResponseManagerMock.createGetFileSuccessResponse(ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(response)
         `when`(artistRepositoryMock.findById(ArgumentMatchers.anyString())).thenReturn(Optional.of(ARTIST_ONE))
         mockMvc = MockMvcBuilders.standaloneSetup(artistControllerSpy).build()
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_ONE.id, SONGS, SONG_ONE.id, FILE))
@@ -746,7 +744,7 @@ class ArtistControllerTest {
     @Test
     @Throws(Exception::class)
     fun getSongFileNull() {
-        setupGridFsDbFileMock(FILE_ID, FILE_NAME, FILE_CONTENT_TYPE)
+        setupGridFsFileMock(FILE_ID, FILE_NAME, FILE_CONTENT_TYPE)
         val response = maestroResponseManager.createGetFileFailureResponse()
         `when`(maestroResponseManagerMock.createGetFileFailureResponse()).thenReturn(response)
         `when`(artistRepositoryMock.findById(ArgumentMatchers.anyString())).thenReturn(Optional.of(ARTIST_TWO))
@@ -760,11 +758,11 @@ class ArtistControllerTest {
     @Test
     @Throws(Exception::class)
     fun getSongArtwork() {
-        setupGridFsDbFileMock(ARTWORK_ID, ARTWORK_NAME, ARTWORK_CONTENT_TYPE)
+        setupGridFsFileMock(ARTWORK_ID, ARTWORK_NAME, ARTWORK_CONTENT_TYPE)
         val headers = HttpHeaders()
         headers.contentType = MediaType.parseMediaType(ARTWORK_CONTENT_TYPE)
         val response = maestroResponseManager.createGetFileSuccessResponse(headers, ARTWORK_FILE)
-        `when`(maestroResponseManagerMock.createGetFileSuccessResponse(ArgumentMatchers.anyObject(), ArgumentMatchers.anyObject())).thenReturn(response)
+        `when`(maestroResponseManagerMock.createGetFileSuccessResponse(ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(response)
         `when`(artistRepositoryMock.findById(ArgumentMatchers.anyString())).thenReturn(Optional.of(ARTIST_ONE))
         mockMvc = MockMvcBuilders.standaloneSetup(artistControllerSpy).build()
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.id, ALBUMS, ALBUM_ONE.id, SONGS, SONG_ONE.id, ARTWORK))
@@ -776,7 +774,7 @@ class ArtistControllerTest {
     @Test
     @Throws(Exception::class)
     fun getSongArtworkNull() {
-        setupGridFsDbFileMock(ARTWORK_ID, ARTWORK_NAME, ARTWORK_CONTENT_TYPE)
+        setupGridFsFileMock(ARTWORK_ID, ARTWORK_NAME, ARTWORK_CONTENT_TYPE)
         val response = maestroResponseManager.createGetFileFailureResponse()
         `when`(maestroResponseManagerMock.createGetFileFailureResponse()).thenReturn(response)
         `when`(artistRepositoryMock.findById(ArgumentMatchers.anyString())).thenReturn(Optional.of(ARTIST_TWO))
@@ -790,11 +788,11 @@ class ArtistControllerTest {
     @Test
     @Throws(IOException::class)
     fun findFile() {
-        setupGridFsDbFileMock(FILE_ID, FILE_NAME, FILE_CONTENT_TYPE)
+        setupGridFsFileMock(FILE_ID, FILE_NAME, FILE_CONTENT_TYPE)
         val headers = HttpHeaders()
         headers.contentType = MediaType.parseMediaType(FILE_CONTENT_TYPE)
         val expectedResponse = maestroResponseManager.createGetFileSuccessResponse(headers, SONG_FILE)
-        `when`(maestroResponseManagerMock.createGetFileSuccessResponse(ArgumentMatchers.anyObject(), ArgumentMatchers.anyObject())).thenReturn(expectedResponse)
+        `when`(maestroResponseManagerMock.createGetFileSuccessResponse(ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(expectedResponse)
         val actualResponse = artistControllerSpy.findFile(FILE_ID)
         assertEquals(expectedResponse.statusCode, actualResponse.statusCode)
         assertEquals(expectedResponse.body, expectedResponse.body)
@@ -803,7 +801,7 @@ class ArtistControllerTest {
     @Test
     @Throws(IOException::class)
     fun findFileNull() {
-        `when`<GridFSFile>(gridFsOperations.findOne(ArgumentMatchers.anyObject())).thenReturn(null)
+        `when`<GridFSFile>(gridFsOperations.findOne(ArgumentMatchers.any())).thenReturn(null)
         val expectedResponse = maestroResponseManager.createGetFileFailureResponse()
         `when`(maestroResponseManagerMock.createGetFileFailureResponse()).thenReturn(expectedResponse)
         val actualResponse = artistControllerSpy.findFile(FILE_ID)
@@ -837,12 +835,12 @@ class ArtistControllerTest {
         return ObjectMapper().writeValueAsString(`object`)
     }
 
-    private fun setupGridFsDbFileMock(id: String, name: String, contentType: String) {
+    private fun setupGridFsFileMock(id: String, name: String, contentType: String) {
         `when`(gridFsFile.filename).thenReturn(name)
         `when`(gridFsFile.contentType).thenReturn(contentType)
         `when`(gridFsFile.length).thenReturn(FILE_LENGTH)
         `when`(gridFsFile.uploadDate).thenReturn(FILE_UPLOAD_DATE)
-        `when`<GridFSFile>(gridFsOperations.findOne(ArgumentMatchers.anyObject())).thenReturn(gridFsFile)
+        `when`<GridFSFile>(gridFsOperations.findOne(ArgumentMatchers.any())).thenReturn(gridFsFile)
     }
 
     companion object {
