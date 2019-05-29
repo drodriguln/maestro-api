@@ -214,10 +214,8 @@ class ArtistController {
                 .findFirst()
         if (!repoAlbumOptional.isPresent)
             return maestroResponseManager.createSaveFailureResponse()
-        if (repoAlbumOptional.get().songs == null)
-            repoAlbumOptional.get().songs = emptyList()
-        val repoSongs = repoAlbumOptional.get().songs
-        repoAlbumOptional.get().songs += newSong
+        val repoSongs = repoAlbumOptional.get().songs + newSong
+        repoAlbumOptional.get().songs = repoSongs
         artistRepository.save(repoArtistOptional.get())
         return maestroResponseManager.createSaveSuccessResponse(repoSongs)
     }
@@ -237,8 +235,6 @@ class ArtistController {
                 .filter { repoSong -> songId == repoSong.id }
                 .findFirst()
         if (repoSongOptional.isPresent) {
-            if (song.fileId == null)
-                song.fileId = repoSongOptional.get().fileId
             if (song.artworkFileId == null)
                 song.artworkFileId = repoSongOptional.get().artworkFileId
             repoAlbumOptional.get().songs = repoAlbumOptional.get().songs - repoSongOptional.get()
