@@ -1,16 +1,17 @@
-package com.developer.drodriguez.web;
+package com.drodriguln.web;
 
-import com.developer.drodriguez.model.*;
-import com.developer.drodriguez.domain.ArtistRepository;
-import com.developer.drodriguez.response.MaestroResponseBody;
-import com.developer.drodriguez.response.MaestroResponseManager;
-import com.mongodb.gridfs.GridFSDBFile;
-import com.mongodb.gridfs.GridFSFile;
+import com.drodriguln.model.*;
+import com.drodriguln.domain.ArtistRepository;
+import com.drodriguln.response.MaestroResponseBody;
+import com.drodriguln.response.MaestroResponseManager;
+import com.mongodb.client.gridfs.model.GridFSFile;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.gridfs.GridFsTemplate;
+import org.springframework.data.mongodb.gridfs.GridFsOperations;
+import org.springframework.data.mongodb.gridfs.GridFsResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -25,7 +26,7 @@ import java.util.*;
 public class ArtistController {
 
     @Autowired private ArtistRepository artistRepository;
-    @Autowired private GridFsTemplate gridFsTemplate;
+    @Autowired private GridFsOperations gridFsOperations;
     @Autowired private MaestroResponseManager maestroResponseManager;
 
     /*
@@ -60,7 +61,7 @@ public class ArtistController {
         if (repoArtistOptional.isPresent() && artistId.equals(repoArtistOptional.get().getId())) {
             if (artist.getAlbums() == null)
                 artist.setAlbums(repoArtistOptional.get().getAlbums());
-            artistRepository.delete(repoArtistOptional.get().getId());
+            artistRepository.deleteById(repoArtistOptional.get().getId());
         }
         Artist newArtist = artistRepository.save(new Artist(artistId, artist.getName(), artist.getAlbums()));
         return maestroResponseManager.createSaveSuccessResponse(newArtist);
@@ -80,7 +81,7 @@ public class ArtistController {
                 deleteFile(song.getFileId());
             }
         }
-        artistRepository.delete(artistId);
+        artistRepository.deleteById(artistId);
         return maestroResponseManager.createDeleteSuccessResponse();
     }
 
@@ -185,13 +186,13 @@ public class ArtistController {
                             @RequestParam String year, @RequestParam MultipartFile song,
                             @RequestParam MultipartFile artwork) throws IOException {
         String songFileName = song.getOriginalFilename();
-        GridFSFile songFile = gridFsTemplate.store(song.getInputStream(), songFileName, song.getContentType());
-        GridFSFile artworkFile = gridFsTemplate.store(artwork.getInputStream(), artwork.getOriginalFilename(), artwork.getContentType());
+        ObjectId songFileId = gridFsOperations.store(song.getInputStream(), songFileName, song.getContentType());
+        ObjectId artworkFileId = gridFsOperations.store(artwork.getInputStream(), artwork.getOriginalFilename(), artwork.getContentType());
         if (songName == null || songName.isEmpty())
             songName = songFileName.contains(".") ? songFileName.substring(0, songFileName.lastIndexOf('.')) : songFileName;
         if (trackNumber == null || trackNumber.isEmpty())
             trackNumber = "0";
-        Song newSong = new Song(songName, trackNumber, year, songFile.getId().toString(), artworkFile.getId().toString());
+        Song newSong = new Song(songName, trackNumber, year, songFileId.toString(), artworkFileId.toString());
         Optional<Artist> repoArtistOptional = findArtist(artistId);
         if (!repoArtistOptional.isPresent() || repoArtistOptional.get().getAlbums() == null)
             return maestroResponseManager.createSaveFailureResponse();
@@ -261,7 +262,7 @@ public class ArtistController {
     }
 
     @GetMapping(value = "/artists/{artistId}/albums/{albumId}/songs/{songId}/file")
-    public ResponseEntity<byte[]> getSongFile(@PathVariable String artistId, @PathVariable String albumId, @PathVariable String songId) throws IOException {
+    public ResponseEntity<GridFsResource> getSongFile(@PathVariable String artistId, @PathVariable String albumId, @PathVariable String songId) throws IOException {
         Optional<Song> repoSong = findSong(artistId, albumId, songId);
         return repoSong.isPresent()
                 ? findFile(repoSong.get().getFileId())
@@ -269,43 +270,38 @@ public class ArtistController {
     }
 
     @GetMapping(value = "/artists/{artistId}/albums/{albumId}/songs/{songId}/artwork")
-    public ResponseEntity<byte[]> getArtworkFile(@PathVariable String artistId, @PathVariable String albumId, @PathVariable String songId) throws IOException {
+    public ResponseEntity<GridFsResource> getArtworkFile(@PathVariable String artistId, @PathVariable String albumId, @PathVariable String songId) throws IOException {
         Optional<Song> repoSong = findSong(artistId, albumId, songId);
         return repoSong.isPresent()
                 ? findFile(repoSong.get().getArtworkFileId())
                 : maestroResponseManager.createGetFileFailureResponse();
     }
 
-    ResponseEntity<byte[]> findFile(String fileId) throws IOException {
-        GridFSDBFile gridFSDBFile = gridFsTemplate.findOne(new Query(Criteria.where("_id").is(fileId)));
-        if (gridFSDBFile == null)
+    ResponseEntity<GridFsResource> findFile(String fileId) {
+        GridFSFile gridFsFile = gridFsOperations.findOne(new Query(Criteria.where("_id").is(fileId)));
+        if (gridFsFile == null)
             return maestroResponseManager.createGetFileFailureResponse();
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        gridFSDBFile.writeTo(outputStream);
+        GridFsResource file = gridFsOperations.getResource(gridFsFile);
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType(gridFSDBFile.getContentType()));
-        byte[] bytes = outputStream.toByteArray();
-        return maestroResponseManager.createGetFileSuccessResponse(headers, bytes);
+        headers.setContentType(MediaType.parseMediaType(file.getContentType()));
+        return maestroResponseManager.createGetFileSuccessResponse(headers, file);
     }
 
     ResponseEntity<MaestroResponseBody> deleteFile(String fileId) {
-        gridFsTemplate.delete(new Query(Criteria.where("_id").is(fileId)));
+        gridFsOperations.delete(new Query(Criteria.where("_id").is(fileId)));
         return maestroResponseManager.createDeleteSuccessResponse();
     }
 
     Optional<Artist> findArtist(String artistId) {
-        Artist repoArtist = artistRepository.findOne(artistId);
-        return repoArtist != null
-                ? Optional.of(repoArtist)
-                : Optional.empty();
+        return artistRepository.findById(artistId);
     }
 
     Optional<Album> findAlbum(String artistId, String albumId) {
         Optional<Artist> repoArtistOptional = findArtist(artistId);
         return repoArtistOptional.isPresent() && repoArtistOptional.get().getAlbums() != null
                 ? repoArtistOptional.get().getAlbums().stream()
-                .filter(repoAlbum -> repoAlbum.getId().equals(albumId))
-                .findFirst()
+                    .filter(repoAlbum -> repoAlbum.getId().equals(albumId))
+                    .findFirst()
                 : Optional.empty();
     }
 
@@ -313,8 +309,8 @@ public class ArtistController {
         Optional<Album> repoAlbumOptional = findAlbum(artistId, albumId);
         return repoAlbumOptional.isPresent() && repoAlbumOptional.get().getSongs() != null
                 ? repoAlbumOptional.get().getSongs().stream()
-                .filter(repoSong -> songId.equals(repoSong.getId()))
-                .findFirst()
+                    .filter(repoSong -> songId.equals(repoSong.getId()))
+                    .findFirst()
                 : Optional.empty();
     }
 

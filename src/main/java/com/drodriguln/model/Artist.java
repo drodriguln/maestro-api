@@ -1,4 +1,4 @@
-package com.developer.drodriguez.model;
+package com.drodriguln.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

@@ -1,5 +1,6 @@
-package com.developer.drodriguez.response;
+package com.drodriguln.response;
 
+import org.springframework.data.mongodb.gridfs.GridFsResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -51,15 +52,15 @@ public class MaestroResponseManager {
                 .body(new MaestroResponseBody(DELETE_FAILURE));
     }
 
-    public ResponseEntity<byte[]> createGetFileSuccessResponse(HttpHeaders headers, byte[] bytes) {
+    public ResponseEntity<GridFsResource> createGetFileSuccessResponse(HttpHeaders headers, GridFsResource file) {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .headers(headers)
-                .body(bytes);
+                .body(file);
     }
 
-    public ResponseEntity<byte[]> createGetFileFailureResponse() {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new byte[0]);
+    public ResponseEntity<GridFsResource> createGetFileFailureResponse() {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
     }
 
     public ResponseEntity<MaestroResponseBody> createExceptionResponse(String message) {

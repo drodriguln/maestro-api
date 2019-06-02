@@ -1,15 +1,17 @@
-package com.developer.drodriguez.web;
+package com.drodriguln.web;
 
-import com.developer.drodriguez.config.FongoConfiguration;
-import com.developer.drodriguez.domain.ArtistRepository;
-import com.developer.drodriguez.model.Album;
-import com.developer.drodriguez.model.Artist;
-import com.developer.drodriguez.response.MaestroResponseBody;
-import com.developer.drodriguez.model.Song;
-import com.developer.drodriguez.response.MaestroResponseManager;
+import com.drodriguln.config.FongoConfiguration;
+import com.drodriguln.domain.ArtistRepository;
+import com.drodriguln.model.Album;
+import com.drodriguln.model.Artist;
+import com.drodriguln.response.MaestroResponseBody;
+import com.drodriguln.model.Song;
+import com.drodriguln.response.MaestroResponseManager;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mongodb.gridfs.GridFSDBFile;
+import com.mongodb.client.gridfs.model.GridFSFile;
+import org.bson.BsonObjectId;
+import org.bson.Document;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -18,7 +20,8 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.mongodb.gridfs.GridFsTemplate;
+import org.springframework.data.mongodb.gridfs.GridFsOperations;
+import org.springframework.data.mongodb.gridfs.GridFsResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -51,16 +54,18 @@ public class ArtistControllerTest {
     @Autowired private ArtistController artistController;
     @Autowired private ArtistRepository artistRepository;
     @Autowired private MaestroResponseManager maestroResponseManager;
-    @Mock private GridFSDBFile gridFsDbFile;
-    @Mock private GridFsTemplate gridFsTemplate;
+    @Mock private GridFSFile gridFsFile;
+    @Mock private GridFsOperations gridFsOperations;
     @Mock private ArtistRepository artistRepositoryMock;
     @Mock private MaestroResponseManager maestroResponseManagerMock;
     @InjectMocks @Spy private ArtistController artistControllerSpy;
 
-    private static final byte[] SONG_FILE_BYTES = "Some image".getBytes();
-    private static final byte[] ARTWORK_FILE_BYTES = "Some image".getBytes();
-    private static final MockMultipartFile ARTWORK_FILE_ONE = new MockMultipartFile("artwork", "artwork-file-one.png", "image/png", SONG_FILE_BYTES);
-    private static final MockMultipartFile SONG_FILE_ONE = new MockMultipartFile("song", "song-file-one.mp3", "audio/mp3", ARTWORK_FILE_BYTES);
+    private static final BsonObjectId SONG_FILE_ID = new BsonObjectId();
+    private static final BsonObjectId ARTWORK_FILE_ID = new BsonObjectId();
+    private static final GridFsResource SONG_FILE = new GridFsResource(new GridFSFile(SONG_FILE_ID, "foo", 0, 0, new Date(), "foo", new Document("_contentType", "audio/mp3")));
+    private static final GridFsResource ARTWORK_FILE = new GridFsResource(new GridFSFile(ARTWORK_FILE_ID, "foo", 0, 0, new Date(), "foo", new Document("_contentType", "image/png")));
+    private static final MockMultipartFile ARTWORK_FILE_ONE = new MockMultipartFile("artwork", "artwork-file-one.png", "image/png", "Some song file".getBytes());
+    private static final MockMultipartFile SONG_FILE_ONE = new MockMultipartFile("song", "song-file-one.mp3", "audio/mp3", "Some image file".getBytes());
     private static final Song SONG_ONE = new Song(UUID.randomUUID().toString(), "SongOne", "1", "2018", UUID.randomUUID().toString(), UUID.randomUUID().toString());
     private static final Song SONG_TWO = new Song(UUID.randomUUID().toString(), "SongTwo", "2", "2018", UUID.randomUUID().toString(), UUID.randomUUID().toString());
     private static final Song SONG_THREE = new Song(UUID.randomUUID().toString(), "SongThree", "1", "2018", UUID.randomUUID().toString(), UUID.randomUUID().toString());
@@ -149,7 +154,7 @@ public class ArtistControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isCreated());
-        assertEquals(ARTIST_ONE, artistRepository.findOne(ARTIST_ONE.getId()));
+        assertEquals(ARTIST_ONE, artistRepository.findById(ARTIST_ONE.getId()).get());
     }
 
     @Test
@@ -163,7 +168,7 @@ public class ArtistControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isCreated());
-        assertNotEquals(ARTIST_ONE, artistRepository.findOne(ARTIST_ONE.getId()));
+        assertNotEquals(ARTIST_ONE, artistRepository.findById(ARTIST_ONE.getId()).get());
     }
 
     @Test
@@ -178,7 +183,7 @@ public class ArtistControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isCreated());
-        assertNotEquals(ARTIST_FOUR, artistRepository.findOne(ARTIST_FOUR.getId()));
+        assertNotEquals(ARTIST_FOUR, artistRepository.findById(ARTIST_FOUR.getId()));
     }
 
     @Test
@@ -276,8 +281,8 @@ public class ArtistControllerTest {
                 .andExpect(jsonPath("$.message").value(response.getBody().getMessage()))
                 .andExpect(content().string(containsString("\"name\":\"AlbumFour\"")))
                 .andExpect(status().isCreated());
-        assertEquals(3, artistRepository.findOne(ARTIST_ONE.getId()).getAlbums().size());
-        assertNotEquals(ARTIST_ONE, artistRepository.findOne(ARTIST_ONE.getId()));
+        assertEquals(3, artistRepository.findById(ARTIST_ONE.getId()).get().getAlbums().size());
+        assertNotEquals(ARTIST_ONE, artistRepository.findById(ARTIST_ONE.getId()));
     }
 
     @Test
@@ -290,8 +295,8 @@ public class ArtistControllerTest {
                 .andExpect(jsonPath("$.message").value(response.getBody().getMessage()))
                 .andExpect(content().string(containsString("\"name\":\"AlbumFour\"")))
                 .andExpect(status().isCreated());
-        assertEquals(1, artistRepository.findOne(ARTIST_FOUR.getId()).getAlbums().size());
-        assertNotEquals(ALBUM_FOUR, artistRepository.findOne(ARTIST_FOUR.getId()));
+        assertEquals(1, artistRepository.findById(ARTIST_FOUR.getId()).get().getAlbums().size());
+        assertNotEquals(ALBUM_FOUR, artistRepository.findById(ARTIST_FOUR.getId()));
     }
 
     @Test
@@ -316,7 +321,7 @@ public class ArtistControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isCreated());
-        assertNotEquals(ARTIST_ONE, artistRepository.findOne(ARTIST_ONE.getId()));
+        assertNotEquals(ARTIST_ONE, artistRepository.findById(ARTIST_ONE.getId()).get());
     }
 
     @Test
@@ -330,7 +335,7 @@ public class ArtistControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isUnprocessableEntity());
-        assertEquals(ARTIST_ONE, artistRepository.findOne(ARTIST_ONE.getId()));
+        assertEquals(ARTIST_ONE, artistRepository.findById(ARTIST_ONE.getId()).get());
     }
 
     @Test
@@ -344,7 +349,7 @@ public class ArtistControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isCreated());
-        assertNotEquals(ARTIST_THREE, artistRepository.findOne(ARTIST_THREE.getId()));
+        assertNotEquals(ARTIST_THREE, artistRepository.findById(ARTIST_THREE.getId()).get());
     }
 
     @Test
@@ -355,7 +360,7 @@ public class ArtistControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isOk());
-        Artist artistAfterDelete = artistRepository.findOne(ARTIST_ONE.getId());
+        Artist artistAfterDelete = artistRepository.findById(ARTIST_ONE.getId()).get();
         List<Album> albumsAfterDelete = artistAfterDelete.getAlbums();
         assertEquals(1, albumsAfterDelete.size());
         assertFalse(albumsAfterDelete.contains(ALBUM_TWO));
@@ -545,7 +550,7 @@ public class ArtistControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isCreated());
-        assertNotEquals(ARTIST_ONE, artistRepository.findOne(ARTIST_ONE.getId()));
+        assertNotEquals(ARTIST_ONE, artistRepository.findById(ARTIST_ONE.getId()).get());
     }
 
     @Test
@@ -559,7 +564,7 @@ public class ArtistControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isUnprocessableEntity());
-        assertEquals(ARTIST_ONE, artistRepository.findOne(ARTIST_ONE.getId()));
+        assertEquals(ARTIST_ONE, artistRepository.findById(ARTIST_ONE.getId()).get());
     }
 
     @Test
@@ -572,7 +577,7 @@ public class ArtistControllerTest {
                 .content(toJson(songToPut)))
                 .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isUnprocessableEntity());
-        assertEquals(ARTIST_THREE, artistRepository.findOne(ARTIST_THREE.getId()));
+        assertEquals(ARTIST_THREE, artistRepository.findById(ARTIST_THREE.getId()).get());
     }
 
     @Test
@@ -586,7 +591,7 @@ public class ArtistControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isCreated());
-        assertNotEquals(songToPut, artistRepository.findOne(ARTIST_ONE.getId()));
+        assertNotEquals(songToPut, artistRepository.findById(ARTIST_ONE.getId()).get());
     }
 
     @Test
@@ -600,7 +605,7 @@ public class ArtistControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isCreated());
-        assertNotEquals(songToPut, artistRepository.findOne(ARTIST_ONE.getId()));
+        assertNotEquals(songToPut, artistRepository.findById(ARTIST_ONE.getId()).get());
     }
 
     @Test
@@ -611,7 +616,7 @@ public class ArtistControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isOk());
-        Artist artistAfterDelete = artistRepository.findOne(ARTIST_ONE.getId());
+        Artist artistAfterDelete = artistRepository.findById(ARTIST_ONE.getId()).get();
         Album albumAfterDelete = artistAfterDelete.getAlbums().stream()
                 .filter(album -> album.getId().equals(ALBUM_ONE.getId()))
                 .collect(Collectors.toList())
@@ -630,7 +635,7 @@ public class ArtistControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(content().json(toJson(response.getBody())))
                 .andExpect(status().isOk());
-        Artist artistAfterDelete = artistRepository.findOne(ARTIST_ONE.getId());
+        Artist artistAfterDelete = artistRepository.findById(ARTIST_ONE.getId()).get();
         Album albumAfterDelete = artistAfterDelete.getAlbums().stream()
                 .filter(album -> album.getId().equals(ALBUM_TWO.getId()))
                 .collect(Collectors.toList())
@@ -672,7 +677,7 @@ public class ArtistControllerTest {
     @Test
     public void findArtist() {
         assertTrue(artistController.findArtist(ARTIST_ONE.getId()).isPresent());
-        assertEquals(artistRepository.findOne(ARTIST_ONE.getId()), artistController.findArtist(ARTIST_ONE.getId()).get());
+        assertEquals(artistRepository.findById(ARTIST_ONE.getId()), artistController.findArtist(ARTIST_ONE.getId()).get());
     }
 
     @Test
@@ -709,12 +714,12 @@ public class ArtistControllerTest {
 
     @Test
     public void getSongFile() throws Exception {
-        setupGridFsDbFileMock(FILE_ID, FILE_NAME, FILE_CONTENT_TYPE);
+        setupGridFsFileMock(FILE_NAME, FILE_CONTENT_TYPE);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType(FILE_CONTENT_TYPE));
-        ResponseEntity<byte[]> response = maestroResponseManager.createGetFileSuccessResponse(headers, SONG_FILE_BYTES);
+        ResponseEntity<GridFsResource> response = maestroResponseManager.createGetFileSuccessResponse(headers, SONG_FILE);
         when(maestroResponseManagerMock.createGetFileSuccessResponse(anyObject(), anyObject())).thenReturn(response);
-        when(artistRepositoryMock.findOne(anyString())).thenReturn(ARTIST_ONE);
+        when(artistRepositoryMock.findById(anyString())).thenReturn(Optional.of(ARTIST_ONE));
         mockMvc = MockMvcBuilders.standaloneSetup(artistControllerSpy).build();
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_ONE.getId(), SONGS, SONG_ONE.getId(), FILE))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -724,25 +729,25 @@ public class ArtistControllerTest {
 
     @Test
     public void getSongFileNull() throws Exception {
-        setupGridFsDbFileMock(FILE_ID, FILE_NAME, FILE_CONTENT_TYPE);
-        ResponseEntity<byte[]> response = maestroResponseManager.createGetFileFailureResponse();
+        setupGridFsFileMock(FILE_NAME, FILE_CONTENT_TYPE);
+        ResponseEntity<GridFsResource> response = maestroResponseManager.createGetFileFailureResponse();
         when(maestroResponseManagerMock.createGetFileFailureResponse()).thenReturn(response);
-        when(artistRepositoryMock.findOne(anyString())).thenReturn(ARTIST_TWO);
+        when(artistRepositoryMock.findById(anyString())).thenReturn(Optional.of(ARTIST_TWO));
         mockMvc = MockMvcBuilders.standaloneSetup(artistControllerSpy).build();
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_TWO.getId(), ALBUMS, ALBUM_TWO.getId(), SONGS, SONG_THREE.getId(), FILE))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().bytes(response.getBody()))
+                .andExpect(content().string(""))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     public void getSongArtwork() throws Exception {
-        setupGridFsDbFileMock(ARTWORK_ID, ARTWORK_NAME, ARTWORK_CONTENT_TYPE);
+        setupGridFsFileMock(ARTWORK_NAME, ARTWORK_CONTENT_TYPE);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType(ARTWORK_CONTENT_TYPE));
-        ResponseEntity<byte[]> response = maestroResponseManager.createGetFileSuccessResponse(headers, ARTWORK_FILE_BYTES);
+        ResponseEntity<GridFsResource> response = maestroResponseManager.createGetFileSuccessResponse(headers, ARTWORK_FILE);
         when(maestroResponseManagerMock.createGetFileSuccessResponse(anyObject(), anyObject())).thenReturn(response);
-        when(artistRepositoryMock.findOne(anyString())).thenReturn(ARTIST_ONE);
+        when(artistRepositoryMock.findById(anyString())).thenReturn(Optional.of(ARTIST_ONE));
         mockMvc = MockMvcBuilders.standaloneSetup(artistControllerSpy).build();
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_ONE.getId(), ALBUMS, ALBUM_ONE.getId(), SONGS, SONG_ONE.getId(), ARTWORK))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
@@ -752,35 +757,35 @@ public class ArtistControllerTest {
 
     @Test
     public void getSongArtworkNull() throws Exception {
-        setupGridFsDbFileMock(ARTWORK_ID, ARTWORK_NAME, ARTWORK_CONTENT_TYPE);
-        ResponseEntity<byte[]> response = maestroResponseManager.createGetFileFailureResponse();
+        setupGridFsFileMock(ARTWORK_NAME, ARTWORK_CONTENT_TYPE);
+        ResponseEntity<GridFsResource> response = maestroResponseManager.createGetFileFailureResponse();
         when(maestroResponseManagerMock.createGetFileFailureResponse()).thenReturn(response);
-        when(artistRepositoryMock.findOne(anyString())).thenReturn(ARTIST_TWO);
+        when(artistRepositoryMock.findById(anyString())).thenReturn(Optional.of(ARTIST_TWO));
         mockMvc = MockMvcBuilders.standaloneSetup(artistControllerSpy).build();
         mockMvc.perform(get(String.format("/%s/%s/%s/%s/%s/%s/%s", ARTISTS, ARTIST_TWO.getId(), ALBUMS, ALBUM_TWO.getId(), SONGS, SONG_THREE.getId(), ARTWORK))
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(content().bytes(response.getBody()))
+                .andExpect(content().string(""))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    public void findFile() throws IOException {
-        setupGridFsDbFileMock(FILE_ID, FILE_NAME, FILE_CONTENT_TYPE);
+    public void findFile() {
+        setupGridFsFileMock(FILE_NAME, FILE_CONTENT_TYPE);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType(FILE_CONTENT_TYPE));
-        ResponseEntity<byte[]> expectedResponse = maestroResponseManager.createGetFileSuccessResponse(headers, SONG_FILE_BYTES);
+        ResponseEntity<GridFsResource> expectedResponse = maestroResponseManager.createGetFileSuccessResponse(headers, SONG_FILE);
         when(maestroResponseManagerMock.createGetFileSuccessResponse(anyObject(), anyObject())).thenReturn(expectedResponse);
-        ResponseEntity<byte[]> actualResponse = artistControllerSpy.findFile(FILE_ID);
+        ResponseEntity<GridFsResource> actualResponse = artistControllerSpy.findFile(FILE_ID);
         assertEquals(expectedResponse.getStatusCode(), actualResponse.getStatusCode());
         assertEquals(expectedResponse.getBody(), expectedResponse.getBody());
     }
 
     @Test
-    public void findFileNull() throws IOException {
-        when(gridFsTemplate.findOne(anyObject())).thenReturn(null);
-        ResponseEntity<byte[]> expectedResponse = maestroResponseManager.createGetFileFailureResponse();
+    public void findFileNull() {
+        when(gridFsOperations.findOne(anyObject())).thenReturn(null);
+        ResponseEntity<GridFsResource> expectedResponse = maestroResponseManager.createGetFileFailureResponse();
         when(maestroResponseManagerMock.createGetFileFailureResponse()).thenReturn(expectedResponse);
-        ResponseEntity<byte[]> actualResponse = artistControllerSpy.findFile(FILE_ID);
+        ResponseEntity<GridFsResource> actualResponse = artistControllerSpy.findFile(FILE_ID);
         assertEquals(expectedResponse.getStatusCode(), actualResponse.getStatusCode());
         assertEquals(expectedResponse.getBody(), expectedResponse.getBody());
     }
@@ -810,13 +815,12 @@ public class ArtistControllerTest {
         return new ObjectMapper().writeValueAsString(object);
     }
 
-    private void setupGridFsDbFileMock(String id, String name, String contentType) {
-        when(gridFsDbFile.getId()).thenReturn(id);
-        when(gridFsDbFile.getFilename()).thenReturn(name);
-        when(gridFsDbFile.getContentType()).thenReturn(contentType);
-        when(gridFsDbFile.getLength()).thenReturn(FILE_LENGTH);
-        when(gridFsDbFile.getUploadDate()).thenReturn(FILE_UPLOAD_DATE);
-        when(gridFsTemplate.findOne(anyObject())).thenReturn(gridFsDbFile);
+    private void setupGridFsFileMock(String name, String contentType) {
+        when(gridFsFile.getFilename()).thenReturn(name);
+        when(gridFsFile.getContentType()).thenReturn(contentType);
+        when(gridFsFile.getLength()).thenReturn(FILE_LENGTH);
+        when(gridFsFile.getUploadDate()).thenReturn(FILE_UPLOAD_DATE);
+        when(gridFsOperations.findOne(anyObject())).thenReturn(gridFsFile);
     }
 
 }

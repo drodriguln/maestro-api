@@ -1,4 +1,4 @@
-package com.developer.drodriguez.response;
+package com.drodriguln.response;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
