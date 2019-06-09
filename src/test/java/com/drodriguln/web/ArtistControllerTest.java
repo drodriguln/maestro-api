@@ -1,6 +1,7 @@
 package com.drodriguln.web;
 
-import com.drodriguln.config.FongoConfiguration;
+import com.drodriguln.Application;
+import com.drodriguln.config.MongoTestConfiguration;
 import com.drodriguln.domain.ArtistRepository;
 import com.drodriguln.model.Album;
 import com.drodriguln.model.Artist;
@@ -20,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.gridfs.GridFsOperations;
 import org.springframework.data.mongodb.gridfs.GridFsResource;
 import org.springframework.http.HttpHeaders;
@@ -32,13 +34,13 @@ import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import static junit.framework.TestCase.assertTrue;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.when;
@@ -48,13 +50,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("fongo")
 @SpringBootTest
 @RunWith(SpringRunner.class)
-@ContextConfiguration(classes = {FongoConfiguration.class})
+@ContextConfiguration(classes = {Application.class, MongoTestConfiguration.class})
 public class ArtistControllerTest {
 
     @Autowired private ArtistController artistController;
     @Autowired private ArtistRepository artistRepository;
     @Autowired private MaestroResponseManager maestroResponseManager;
     @Mock private GridFSFile gridFsFile;
+    @Mock private GridFsResource gridFsResource;
     @Mock private GridFsOperations gridFsOperations;
     @Mock private ArtistRepository artistRepositoryMock;
     @Mock private MaestroResponseManager maestroResponseManagerMock;
@@ -81,9 +84,8 @@ public class ArtistControllerTest {
     private static final String FILE_ID = SONG_ONE.getFileId();
     private static final String FILE_NAME = "test.mp3";
     private static final String FILE_CONTENT_TYPE = "media/mp3";
-    private static final long FILE_LENGTH = 42L;
+    private static final int FILE_LENGTH = 4321;
     private static final Date FILE_UPLOAD_DATE = new GregorianCalendar(2018, 6, 24).getTime();
-    private static final String ARTWORK_ID = SONG_ONE.getFileId();
     private static final String ARTWORK_NAME = "test.png";
     private static final String ARTWORK_CONTENT_TYPE = "image/png";
     private static final String SONGS = "songs";
@@ -677,7 +679,7 @@ public class ArtistControllerTest {
     @Test
     public void findArtist() {
         assertTrue(artistController.findArtist(ARTIST_ONE.getId()).isPresent());
-        assertEquals(artistRepository.findById(ARTIST_ONE.getId()), artistController.findArtist(ARTIST_ONE.getId()).get());
+        assertEquals(artistRepository.findById(ARTIST_ONE.getId()), artistController.findArtist(ARTIST_ONE.getId()));
     }
 
     @Test
@@ -816,11 +818,10 @@ public class ArtistControllerTest {
     }
 
     private void setupGridFsFileMock(String name, String contentType) {
-        when(gridFsFile.getFilename()).thenReturn(name);
-        when(gridFsFile.getContentType()).thenReturn(contentType);
-        when(gridFsFile.getLength()).thenReturn(FILE_LENGTH);
-        when(gridFsFile.getUploadDate()).thenReturn(FILE_UPLOAD_DATE);
-        when(gridFsOperations.findOne(anyObject())).thenReturn(gridFsFile);
+        GridFSFile file = new GridFSFile(new BsonObjectId(), name, FILE_LENGTH, 0, FILE_UPLOAD_DATE, null, new Document());
+        when(gridFsOperations.getResource(any(GridFSFile.class))).thenReturn(gridFsResource);
+        when(gridFsResource.getContentType()).thenReturn(contentType);
+        when(gridFsOperations.findOne(any(Query.class))).thenReturn(file);
     }
 
 }
