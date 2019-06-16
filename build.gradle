@@ -15,6 +15,7 @@ repositories {
 
 dependencies {
 	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
 	implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	testImplementation 'de.bwaldvogel:mongo-java-server:1.16.0'
